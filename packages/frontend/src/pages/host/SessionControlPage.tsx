@@ -5,6 +5,7 @@ import { SOCKET_EVENTS } from '@quiz/shared';
 import type {
   QuestionStartPayload, QuestionTickPayload, QuestionEndPayload,
   LeaderboardUpdatePayload, SessionFinishedPayload, RankingEntry,
+  AnswerCountUpdatePayload,
 } from '@quiz/shared';
 
 type Phase = 'question' | 'results' | 'leaderboard' | 'finished';
@@ -13,7 +14,11 @@ export function SessionControlPage() {
   const { code: _code } = useParams<{ code: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const navState = location.state as { sessionId?: string; firstQuestion?: QuestionStartPayload } | null;
+  const navState = location.state as {
+    sessionId?: string;
+    firstQuestion?: QuestionStartPayload;
+    totalPlayers?: number;
+  } | null;
 
   const [phase, setPhase] = useState<Phase>('question');
   const [question, setQuestion] = useState<QuestionStartPayload | null>(navState?.firstQuestion ?? null);
@@ -22,6 +27,7 @@ export function SessionControlPage() {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [sessionId] = useState(navState?.sessionId ?? '');
   const [answeredCount, setAnsweredCount] = useState(0);
+  const [totalPlayers, setTotalPlayers] = useState(navState?.totalPlayers ?? 0);
 
   useEffect(() => {
     const token = sessionStorage.getItem('access_token') ?? undefined;
@@ -54,8 +60,9 @@ export function SessionControlPage() {
       setPhase('finished');
     });
 
-    socket.on(SOCKET_EVENTS.ANSWER_RESULT, () => {
-      setAnsweredCount((c) => c + 1);
+    socket.on(SOCKET_EVENTS.ANSWER_COUNT_UPDATE, (data: AnswerCountUpdatePayload) => {
+      setAnsweredCount(data.answeredCount);
+      setTotalPlayers(data.totalPlayers);
     });
 
     return () => {
@@ -64,7 +71,7 @@ export function SessionControlPage() {
       socket.off(SOCKET_EVENTS.QUESTION_END);
       socket.off(SOCKET_EVENTS.LEADERBOARD_UPDATE);
       socket.off(SOCKET_EVENTS.SESSION_FINISHED);
-      socket.off(SOCKET_EVENTS.ANSWER_RESULT);
+      socket.off(SOCKET_EVENTS.ANSWER_COUNT_UPDATE);
     };
   }, []);
 
@@ -86,7 +93,9 @@ export function SessionControlPage() {
     <div className="min-h-screen bg-gray-950 text-white p-6 flex flex-col">
       <div className="flex items-center justify-between mb-4 text-sm text-gray-400">
         <span>Question {question.questionIndex + 1} / {question.totalQuestions}</span>
-        <span>{answeredCount} answered</span>
+        <span className="text-white font-semibold">
+          {answeredCount}{totalPlayers > 0 ? ` / ${totalPlayers}` : ''} answered
+        </span>
         <span className="font-mono text-lg text-white">{Math.ceil(remainingMs / 1000)}s</span>
       </div>
 
@@ -105,8 +114,13 @@ export function SessionControlPage() {
           <>
             <div className="grid grid-cols-2 gap-3">
               {question.answers.map((a) => (
-                <div key={a.id} className="bg-gray-800 rounded-xl px-5 py-4 text-sm">
-                  {a.text}
+                <div
+                  key={a.id}
+                  className="bg-gray-800 rounded-xl px-5 py-4 flex items-center justify-center text-center min-h-[64px]"
+                >
+                  <span className={`${a.text.length <= 20 ? 'text-lg font-bold' : a.text.length <= 40 ? 'text-base font-semibold' : 'text-sm font-medium'}`}>
+                    {a.text}
+                  </span>
                 </div>
               ))}
             </div>
@@ -125,11 +139,13 @@ export function SessionControlPage() {
               {question.answers.map((a) => (
                 <div
                   key={a.id}
-                  className={`rounded-xl px-5 py-4 text-sm font-medium ${
+                  className={`rounded-xl px-5 py-4 flex items-center justify-center text-center min-h-[64px] font-medium ${
                     correctIds.includes(a.id) ? 'bg-green-700 text-white' : 'bg-gray-800 text-gray-400'
                   }`}
                 >
-                  {a.text} {correctIds.includes(a.id) && '✓'}
+                  <span className={`${a.text.length <= 20 ? 'text-lg font-bold' : a.text.length <= 40 ? 'text-base font-semibold' : 'text-sm font-medium'}`}>
+                    {a.text} {correctIds.includes(a.id) && '✓'}
+                  </span>
                 </div>
               ))}
             </div>
