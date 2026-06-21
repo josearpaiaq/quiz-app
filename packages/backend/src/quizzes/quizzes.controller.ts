@@ -1,7 +1,9 @@
 import {
   Controller, Get, Post, Put, Delete, Body, Param,
-  UseGuards, Request, HttpCode,
+  UseGuards, Request, HttpCode, UseInterceptors, UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { QuizzesService } from './quizzes.service';
 import { CreateQuizDto } from './dto/create-quiz.dto';
@@ -25,6 +27,16 @@ export class QuizzesController {
   @Post('quizzes')
   create(@Request() req: any, @Body() dto: CreateQuizDto) {
     return this.service.create(req.user.id, dto);
+  }
+
+  @Post('quizzes/import')
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
+  importQuiz(
+    @Request() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('title') title: string,
+  ) {
+    return this.service.importFromSpreadsheet(req.user.id, title, file);
   }
 
   @Get('quizzes/:id')
