@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSocket, joinSession, disconnectSocket } from '../../lib/socket';
 import { SOCKET_EVENTS, QuestionType } from '@quiz/shared';
@@ -8,7 +8,7 @@ import type {
   RankingEntry,
 } from '@quiz/shared';
 
-type Phase = 'waiting' | 'question' | 'submitted' | 'result' | 'leaderboard' | 'finished' | 'error';
+type Phase = 'waiting' | 'question' | 'submitted' | 'leaderboard' | 'finished' | 'error';
 
 function getAnswerFontClass(text: string): string {
   if (text.length <= 10) return 'text-2xl font-bold';
@@ -18,7 +18,6 @@ function getAnswerFontClass(text: string): string {
 }
 
 const ANSWER_COLORS = ['bg-red-600', 'bg-blue-600', 'bg-yellow-500', 'bg-green-600'];
-const RESULT_MIN_MS = 4500;
 
 export function ParticipantSessionPage() {
   const { code } = useParams<{ code: string }>();
@@ -29,14 +28,10 @@ export function ParticipantSessionPage() {
   const [remainingMs, setRemainingMs] = useState(0);
   const [selected, setSelected] = useState<string[]>([]);
   const [result, setResult] = useState<AnswerResultPayload | null>(null);
-  const [correctIds, setCorrectIds] = useState<string[]>([]);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [nickname, setNickname] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [totalPlayers, setTotalPlayers] = useState(0);
-
-  // Tracks when QUESTION_END fired so leaderboard can be buffered
-  const questionEndedAtRef = useRef<number>(0);
 
   useEffect(() => {
     const info = JSON.parse(sessionStorage.getItem('participant_info') ?? '{}');
@@ -62,21 +57,16 @@ export function ParticipantSessionPage() {
       setQuestion(data);
       setSelected([]);
       setResult(null);
-      setCorrectIds([]);
       setRemainingMs(data.timeLimitMs);
       setPhase('question');
-      questionEndedAtRef.current = 0;
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_TICK, (data: QuestionTickPayload) => {
       setRemainingMs(data.remainingMs);
     });
 
-    socket.on(SOCKET_EVENTS.QUESTION_END, (data: QuestionEndPayload) => {
-      questionEndedAtRef.current = Date.now();
-      setCorrectIds(data.correctAnswerIds);
+    socket.on(SOCKET_EVENTS.QUESTION_END, (_data: QuestionEndPayload) => {
       setRemainingMs(0);
-      setPhase('result');
     });
 
     socket.on(SOCKET_EVENTS.ANSWER_RESULT, (data: AnswerResultPayload) => {
@@ -85,9 +75,7 @@ export function ParticipantSessionPage() {
 
     socket.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: LeaderboardUpdatePayload) => {
       setRankings(data.rankings);
-      const elapsed = Date.now() - questionEndedAtRef.current;
-      const delay = Math.max(0, RESULT_MIN_MS - elapsed);
-      setTimeout(() => setPhase('leaderboard'), delay);
+      setPhase('leaderboard');
     });
 
     socket.on(SOCKET_EVENTS.SESSION_FINISHED, (data: SessionFinishedPayload) => {
@@ -134,7 +122,6 @@ export function ParticipantSessionPage() {
     setPhase('submitted');
   }
 
-  // Auto-submit on SINGLE selection
   useEffect(() => {
     if (question?.type === QuestionType.SINGLE && selected.length === 1 && phase === 'question') {
       submitAnswer();
@@ -215,8 +202,9 @@ export function ParticipantSessionPage() {
     </div>
   );
 
-  // ─── Result (question ended) ───────────────────────────────────────────────
-  if (phase === 'result') {
+  // ─── Leaderboard + personal result ────────────────────────────────────────
+  if (phase === 'leaderboard') {
+    const myRank = rankings.find((r) => r.nickname.toLowerCase() === nickname.toLowerCase());
     const answered = selected.length > 0;
     const speedPct = result && question
       ? Math.round((result.pointsEarned / question.maxPoints) * 100)
@@ -224,98 +212,53 @@ export function ParticipantSessionPage() {
     const responseSeconds = result ? (result.responseTimeMs / 1000).toFixed(1) : null;
 
     return (
-      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-        {/* Timer bar depleted */}
-        <div className="h-2 bg-gray-700">
-          <div className="h-full bg-indigo-500 w-0" />
-        </div>
-
-        <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
-          <div className="flex items-center justify-between text-sm text-gray-400">
-            <span>{question?.questionIndex != null ? `Q${question.questionIndex + 1}/${question.totalQuestions}` : ''}</span>
-            <span className="font-mono text-gray-500 text-base">0s</span>
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col p-5 gap-4">
+        {/* Personal result card */}
+        {answered ? (
+          <div className={`rounded-2xl p-4 text-center border ${
+            result?.correct
+              ? 'bg-green-900/40 border-green-600'
+              : 'bg-red-900/40 border-red-700'
+          }`}>
+            <span className="text-4xl">{result?.correct ? '🎉' : '😢'}</span>
+            <h3 className="text-xl font-bold mt-1">
+              {result ? (result.correct ? 'Correct!' : 'Incorrect') : '…'}
+            </h3>
+            {result?.correct ? (
+              <>
+                <p className="text-4xl font-mono font-bold text-green-400 mt-1">
+                  +{result.pointsEarned}
+                </p>
+                <p className="text-gray-400 text-sm mt-1">
+                  {responseSeconds}s · Speed {speedPct}%
+                </p>
+              </>
+            ) : (
+              responseSeconds && (
+                <p className="text-gray-400 text-sm mt-1">Answered in {responseSeconds}s</p>
+              )
+            )}
+            <p className="text-gray-300 text-sm mt-2">
+              Total:{' '}
+              <span className="font-mono font-bold text-white">
+                {result?.newScore ?? 0}
+              </span>{' '}
+              pts
+            </p>
           </div>
-
-          <h2 className="text-lg font-bold text-center">{question?.text}</h2>
-
-          {/* Answers with result coloring */}
-          <div className="grid grid-cols-2 gap-3">
-            {question?.answers.map((a, i) => {
-              const isCorrect = correctIds.includes(a.id);
-              const wasSelected = selected.includes(a.id);
-              return (
-                <div
-                  key={a.id}
-                  className={`${ANSWER_COLORS[i % 4]} rounded-xl p-3 flex flex-col items-center justify-center text-center min-h-[72px] transition-all ${
-                    isCorrect ? 'ring-4 ring-white brightness-110' : 'opacity-30'
-                  }`}
-                >
-                  {isCorrect && <span className="text-xl mb-0.5">✓</span>}
-                  {!isCorrect && wasSelected && <span className="text-xl mb-0.5">✗</span>}
-                  <span className={getAnswerFontClass(a.text)}>{a.text}</span>
-                </div>
-              );
-            })}
+        ) : (
+          <div className="rounded-2xl p-4 text-center border border-gray-700 bg-gray-800/50">
+            <span className="text-4xl">⏰</span>
+            <h3 className="text-lg font-bold text-gray-400 mt-1">Time's up!</h3>
+            <p className="text-gray-500 text-sm">You didn't answer in time</p>
           </div>
+        )}
 
-          {/* Personal result card */}
-          {answered ? (
-            <div className={`rounded-2xl p-5 text-center border ${
-              result?.correct
-                ? 'bg-green-900/40 border-green-600'
-                : 'bg-red-900/40 border-red-700'
-            }`}>
-              <div className="text-5xl mb-2">{result?.correct ? '🎉' : '😢'}</div>
-              <h3 className="text-2xl font-bold mb-3">
-                {result ? (result.correct ? 'Correct!' : 'Incorrect') : '…'}
-              </h3>
-
-              {result?.correct ? (
-                <>
-                  <p className="text-5xl font-mono font-bold text-green-400 mb-2">
-                    +{result.pointsEarned}
-                  </p>
-                  <div className="flex justify-center gap-4 text-sm text-gray-400 mb-3">
-                    <span>⏱ {responseSeconds}s</span>
-                    <span>·</span>
-                    <span>Speed {speedPct}%</span>
-                  </div>
-                </>
-              ) : (
-                responseSeconds && (
-                  <p className="text-sm text-gray-400 mb-3">⏱ Answered in {responseSeconds}s</p>
-                )
-              )}
-
-              <p className="text-gray-300 text-sm">
-                Total:{' '}
-                <span className="font-mono font-bold text-white text-lg">
-                  {result?.newScore ?? 0}
-                </span>{' '}
-                pts
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl p-5 text-center border border-gray-700 bg-gray-800/50">
-              <div className="text-5xl mb-2">⏰</div>
-              <h3 className="text-xl font-bold text-gray-400">Time's up!</h3>
-              <p className="text-gray-500 text-sm mt-1">You didn't answer in time</p>
-            </div>
-          )}
-
-          <p className="text-center text-gray-600 text-xs pb-2">Leaderboard coming up…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // ─── Leaderboard ──────────────────────────────────────────────────────────
-  if (phase === 'leaderboard') {
-    const myRank = rankings.find((r) => r.nickname.toLowerCase() === nickname.toLowerCase());
-    return (
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col p-6">
-        <h2 className="text-2xl font-bold text-center mb-6">Leaderboard</h2>
-        <div className="space-y-2 max-w-sm mx-auto w-full">
+        {/* Rankings */}
+        <div className="space-y-2">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+            Leaderboard
+          </h2>
           {rankings.slice(0, 5).map((r) => (
             <div
               key={r.nickname}
@@ -333,15 +276,16 @@ export function ParticipantSessionPage() {
               )}
             </div>
           ))}
+          {myRank && myRank.rank > 5 && (
+            <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-indigo-700 font-bold">
+              <span className="w-5 text-sm">{myRank.rank}</span>
+              <span className="flex-1">{myRank.nickname}</span>
+              <span className="font-mono">{myRank.score}</span>
+            </div>
+          )}
         </div>
-        {myRank && myRank.rank > 5 && (
-          <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-indigo-700 font-bold mt-4 max-w-sm mx-auto w-full">
-            <span className="w-5 text-sm">{myRank.rank}</span>
-            <span className="flex-1">{myRank.nickname}</span>
-            <span className="font-mono">{myRank.score}</span>
-          </div>
-        )}
-        <p className="text-center text-gray-500 text-sm mt-6">Next question coming up…</p>
+
+        <p className="text-center text-gray-600 text-xs">Next question coming up…</p>
       </div>
     );
   }
