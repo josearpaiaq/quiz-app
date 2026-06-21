@@ -84,13 +84,33 @@ export function SessionControlPage() {
   }
 
   if (!question) return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
+    <div className="min-h-screen bg-base-200 flex items-center justify-center">
       <span className="loading loading-spinner loading-lg" />
     </div>
   );
 
   const pct = (remainingMs / question.timeLimitMs) * 100;
 
+  // ─── Finished ─────────────────────────────────────────────────────────────
+  if (phase === 'finished') return (
+    <div className="min-h-screen bg-base-200 flex flex-col p-6 items-center">
+      <h2 className="text-3xl font-bold text-center mt-8 mb-6">Final Rankings</h2>
+      <div className="space-y-2 w-full max-w-md">
+        {rankings.map((r) => (
+          <div key={r.nickname} className="flex items-center gap-3 bg-base-100 rounded-lg px-4 py-3">
+            <span className="text-base-content/40 w-6 text-sm">{r.rank}</span>
+            <span className="flex-1 font-medium">{r.nickname}</span>
+            <span className="text-primary font-mono font-bold">{r.score}</span>
+          </div>
+        ))}
+      </div>
+      <button onClick={() => navigate('/host')} className="btn btn-ghost mt-8">
+        Back to quizzes
+      </button>
+    </div>
+  );
+
+  // ─── Question / results / leaderboard (dark game screen) ──────────────────
   return (
     <div className="min-h-screen bg-gray-950 text-white p-6 flex flex-col">
       <div className="flex items-center justify-between mb-4 text-sm text-gray-400">
@@ -101,7 +121,6 @@ export function SessionControlPage() {
         <span className="font-mono text-lg text-white">{Math.ceil(remainingMs / 1000)}s</span>
       </div>
 
-      {/* Timer bar */}
       <div className="h-2 bg-gray-800 rounded-full mb-8">
         <div
           className="h-full bg-indigo-500 rounded-full transition-all duration-1000"
@@ -171,22 +190,6 @@ export function SessionControlPage() {
               </>
             )}
           </>
-        )}
-
-        {phase === 'finished' && (
-          <div className="space-y-4">
-            <h3 className="text-xl font-bold text-center">Final Rankings</h3>
-            {rankings.map((r) => (
-              <div key={r.nickname} className="flex items-center gap-3 bg-gray-800 rounded-lg px-4 py-3">
-                <span className="text-gray-500 w-6">{r.rank}</span>
-                <span className="flex-1 font-medium">{r.nickname}</span>
-                <span className="text-indigo-400 font-mono font-bold">{r.score}</span>
-              </div>
-            ))}
-            <button onClick={() => navigate('/host')} className="btn btn-ghost w-full text-gray-300 border-gray-700 mt-4">
-              Back to quizzes
-            </button>
-          </div>
         )}
       </div>
     </div>

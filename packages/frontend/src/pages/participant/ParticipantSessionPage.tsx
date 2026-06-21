@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { getSocket, joinSession, disconnectSocket } from '../../lib/socket';
 import { SOCKET_EVENTS, QuestionType } from '@quiz/shared';
 import type {
@@ -130,27 +131,32 @@ export function ParticipantSessionPage() {
 
   // ─── Waiting ──────────────────────────────────────────────────────────────
   if (phase === 'waiting') return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
-      <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-xl font-bold">
-        {nickname[0]?.toUpperCase()}
+    <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center gap-4 p-6">
+      <div className="avatar placeholder">
+        <div className="bg-primary text-primary-content rounded-full w-16">
+          <span className="text-2xl font-bold">{nickname[0]?.toUpperCase()}</span>
+        </div>
       </div>
       <h2 className="text-2xl font-bold">{nickname}</h2>
-      <p className="text-gray-400">{totalPlayers} player{totalPlayers !== 1 ? 's' : ''} in lobby</p>
-      <p className="text-gray-500 text-sm mt-4">Waiting for host to start…</p>
+      <div className="badge badge-outline">
+        {totalPlayers} player{totalPlayers !== 1 ? 's' : ''} in lobby
+      </div>
+      <p className="text-base-content/40 text-sm mt-2">Waiting for host to start…</p>
     </div>
   );
 
   // ─── Error ────────────────────────────────────────────────────────────────
   if (phase === 'error') return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
-      <p className="text-red-400 text-xl">{errorMsg}</p>
-      <button onClick={() => navigate('/')} className="btn btn-ghost text-indigo-400">
-        Back to join
-      </button>
+    <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center gap-4 p-6">
+      <div className="alert alert-error max-w-sm">
+        <XCircle size={20} />
+        <span>{errorMsg}</span>
+      </div>
+      <button onClick={() => navigate('/')} className="btn btn-ghost">Back to join</button>
     </div>
   );
 
-  // ─── Active question ──────────────────────────────────────────────────────
+  // ─── Active question (intentionally dark — game UX) ───────────────────────
   if (phase === 'question' || phase === 'submitted') return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <div className="h-2 bg-gray-700">
@@ -212,80 +218,90 @@ export function ParticipantSessionPage() {
     const responseSeconds = result ? (result.responseTimeMs / 1000).toFixed(1) : null;
 
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col p-5 gap-4">
+      <div className="min-h-screen bg-base-200 flex flex-col p-4 gap-4">
         {/* Personal result card */}
         {answered ? (
-          <div className={`rounded-2xl p-4 text-center border ${
-            result?.correct
-              ? 'bg-green-900/40 border-green-600'
-              : 'bg-red-900/40 border-red-700'
+          <div className={`card shadow-sm border ${
+            result?.correct ? 'bg-success/10 border-success' : 'bg-error/10 border-error'
           }`}>
-            <span className="text-4xl">{result?.correct ? '🎉' : '😢'}</span>
-            <h3 className="text-xl font-bold mt-1">
-              {result ? (result.correct ? 'Correct!' : 'Incorrect') : '…'}
-            </h3>
-            {result?.correct ? (
-              <>
-                <p className="text-4xl font-mono font-bold text-green-400 mt-1">
-                  +{result.pointsEarned}
-                </p>
-                <p className="text-gray-400 text-sm mt-1">
-                  {responseSeconds}s · Speed {speedPct}%
-                </p>
-              </>
-            ) : (
-              responseSeconds && (
-                <p className="text-gray-400 text-sm mt-1">Answered in {responseSeconds}s</p>
-              )
-            )}
-            <p className="text-gray-300 text-sm mt-2">
-              Total:{' '}
-              <span className="font-mono font-bold text-white">
-                {result?.newScore ?? 0}
-              </span>{' '}
-              pts
-            </p>
+            <div className="card-body items-center text-center py-5 gap-1">
+              {result?.correct
+                ? <CheckCircle2 size={44} className="text-success" />
+                : <XCircle size={44} className="text-error" />
+              }
+              <h3 className="text-xl font-bold mt-1">
+                {result ? (result.correct ? 'Correct!' : 'Incorrect') : '…'}
+              </h3>
+              {result?.correct ? (
+                <>
+                  <p className="text-4xl font-mono font-bold text-success mt-1">
+                    +{result.pointsEarned}
+                  </p>
+                  <p className="text-base-content/50 text-sm">
+                    {responseSeconds}s · Speed {speedPct}%
+                  </p>
+                </>
+              ) : (
+                responseSeconds && (
+                  <p className="text-base-content/50 text-sm">Answered in {responseSeconds}s</p>
+                )
+              )}
+              <p className="text-base-content/60 text-sm mt-1">
+                Total:{' '}
+                <span className="font-mono font-bold text-base-content">
+                  {result?.newScore ?? 0}
+                </span>{' '}
+                pts
+              </p>
+            </div>
           </div>
         ) : (
-          <div className="rounded-2xl p-4 text-center border border-gray-700 bg-gray-800/50">
-            <span className="text-4xl">⏰</span>
-            <h3 className="text-lg font-bold text-gray-400 mt-1">Time's up!</h3>
-            <p className="text-gray-500 text-sm">You didn't answer in time</p>
+          <div className="card bg-base-100 shadow-sm border border-base-300">
+            <div className="card-body items-center text-center py-5 gap-1">
+              <Clock size={44} className="text-base-content/30" />
+              <h3 className="text-lg font-bold mt-1">Time's up!</h3>
+              <p className="text-base-content/50 text-sm">You didn't answer in time</p>
+            </div>
           </div>
         )}
 
         {/* Rankings */}
         <div className="space-y-2">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+          <h2 className="text-xs font-semibold text-base-content/40 uppercase tracking-wider">
             Leaderboard
           </h2>
-          {rankings.slice(0, 5).map((r) => (
-            <div
-              key={r.nickname}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
-                r.nickname.toLowerCase() === nickname.toLowerCase()
-                  ? 'bg-indigo-700 font-bold'
-                  : 'bg-gray-800'
-              }`}
-            >
-              <span className="text-gray-400 w-5 text-sm">{r.rank}</span>
-              <span className="flex-1">{r.nickname}</span>
-              <span className="font-mono">{r.score}</span>
-              {r.delta !== undefined && r.delta > 0 && (
-                <span className="text-green-400 text-sm">+{r.delta}</span>
-              )}
-            </div>
-          ))}
+          {rankings.slice(0, 5).map((r) => {
+            const isMe = r.nickname.toLowerCase() === nickname.toLowerCase();
+            return (
+              <div
+                key={r.nickname}
+                className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
+                  isMe ? 'bg-primary text-primary-content font-bold' : 'bg-base-100'
+                }`}
+              >
+                <span className={`w-5 text-sm ${isMe ? 'text-primary-content/60' : 'text-base-content/40'}`}>
+                  {r.rank}
+                </span>
+                <span className="flex-1">{r.nickname}</span>
+                <span className="font-mono">{r.score}</span>
+                {r.delta !== undefined && r.delta > 0 && (
+                  <span className={`text-sm ${isMe ? 'text-primary-content/80' : 'text-success'}`}>
+                    +{r.delta}
+                  </span>
+                )}
+              </div>
+            );
+          })}
           {myRank && myRank.rank > 5 && (
-            <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-indigo-700 font-bold">
-              <span className="w-5 text-sm">{myRank.rank}</span>
+            <div className="flex items-center gap-3 rounded-lg px-4 py-3 bg-primary text-primary-content font-bold">
+              <span className="w-5 text-sm text-primary-content/60">{myRank.rank}</span>
               <span className="flex-1">{myRank.nickname}</span>
               <span className="font-mono">{myRank.score}</span>
             </div>
           )}
         </div>
 
-        <p className="text-center text-gray-600 text-xs">Next question coming up…</p>
+        <p className="text-center text-base-content/30 text-xs">Next question coming up…</p>
       </div>
     );
   }
@@ -294,32 +310,35 @@ export function ParticipantSessionPage() {
   if (phase === 'finished') {
     const myRank = rankings.find((r) => r.nickname.toLowerCase() === nickname.toLowerCase());
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col p-6 items-center">
+      <div className="min-h-screen bg-base-200 flex flex-col p-6 items-center">
         <h2 className="text-3xl font-bold text-center mb-2 mt-8">Game Over!</h2>
         {myRank && (
-          <p className="text-indigo-400 text-xl mb-8">
+          <p className="text-primary text-xl mb-8">
             You finished #{myRank.rank} with {myRank.score} pts
           </p>
         )}
         <div className="space-y-2 w-full max-w-sm">
-          {rankings.map((r) => (
-            <div
-              key={r.nickname}
-              className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
-                r.nickname.toLowerCase() === nickname.toLowerCase()
-                  ? 'bg-indigo-700 font-bold'
-                  : 'bg-gray-800'
-              }`}
-            >
-              <span className="text-gray-400 w-5 text-sm">{r.rank}</span>
-              <span className="flex-1">{r.nickname}</span>
-              <span className="font-mono">{r.score}</span>
-            </div>
-          ))}
+          {rankings.map((r) => {
+            const isMe = r.nickname.toLowerCase() === nickname.toLowerCase();
+            return (
+              <div
+                key={r.nickname}
+                className={`flex items-center gap-3 rounded-lg px-4 py-3 ${
+                  isMe ? 'bg-primary text-primary-content font-bold' : 'bg-base-100'
+                }`}
+              >
+                <span className={`w-5 text-sm ${isMe ? 'text-primary-content/60' : 'text-base-content/40'}`}>
+                  {r.rank}
+                </span>
+                <span className="flex-1">{r.nickname}</span>
+                <span className="font-mono">{r.score}</span>
+              </div>
+            );
+          })}
         </div>
         <button
           onClick={() => { disconnectSocket(); navigate('/'); }}
-          className="btn btn-ghost mt-8 text-gray-300 border-gray-700"
+          className="btn btn-ghost mt-8"
         >
           Play again
         </button>
