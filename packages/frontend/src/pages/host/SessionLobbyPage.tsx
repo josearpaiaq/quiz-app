@@ -4,12 +4,18 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { getSocket } from '../../lib/socket';
 import { SOCKET_EVENTS } from '@quiz/shared';
-import type { PlayerJoinedPayload } from '@quiz/shared';
+import type { PlayerJoinedPayload, PlayerKickedPayload } from '@quiz/shared';
+
+interface Player {
+  nickname: string;
+  firstName: string;
+  lastName: string;
+}
 
 export function SessionLobbyPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const [players, setPlayers] = useState<string[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
   const [sessionId, setSessionId] = useState('');
 
   const { data: session } = useQuery({
@@ -21,7 +27,13 @@ export function SessionLobbyPage() {
   useEffect(() => {
     if (session) {
       setSessionId(session.id);
-      setPlayers(session.participants?.map((p: any) => p.nickname) ?? []);
+      setPlayers(
+        session.participants?.map((p: any) => ({
+          nickname: p.nickname,
+          firstName: p.firstName,
+          lastName: p.lastName,
+        })) ?? [],
+      );
     }
   }, [session]);
 
@@ -34,21 +46,37 @@ export function SessionLobbyPage() {
 
     const onJoined = (data: PlayerJoinedPayload) => {
       setPlayers((prev) => {
-        if (prev.includes(data.nickname)) return prev;
-        return [...prev, data.nickname];
+        if (prev.some((p) => p.nickname === data.nickname)) return prev;
+        return [...prev, { nickname: data.nickname, firstName: data.firstName, lastName: data.lastName }];
       });
     };
 
+    const onKicked = (data: PlayerKickedPayload) => {
+      setPlayers((prev) => prev.filter((p) => p.nickname !== data.nickname));
+    };
+
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, onJoined);
-    return () => { socket.off(SOCKET_EVENTS.PLAYER_JOINED, onJoined); };
+    socket.on(SOCKET_EVENTS.PLAYER_KICKED, onKicked);
+    return () => {
+      socket.off(SOCKET_EVENTS.PLAYER_JOINED, onJoined);
+      socket.off(SOCKET_EVENTS.PLAYER_KICKED, onKicked);
+    };
   }, [code]);
+
+  function kickPlayer(nickname: string) {
+    const token = sessionStorage.getItem('access_token') ?? undefined;
+    const socket = getSocket(token);
+    socket.emit(SOCKET_EVENTS.KICK_PARTICIPANT, { nickname });
+  }
 
   function startSession() {
     const token = sessionStorage.getItem('access_token') ?? undefined;
     const socket = getSocket(token);
     socket.emit(SOCKET_EVENTS.SESSION_START, { sessionId });
     socket.once(SOCKET_EVENTS.QUESTION_START, (data) => {
-      navigate(`/host/sessions/${code}/control`, { state: { sessionId, firstQuestion: data } });
+      navigate(`/host/sessions/${code}/control`, {
+        state: { sessionId, firstQuestion: data, totalPlayers: players.length },
+      });
     });
   }
 
@@ -59,9 +87,24 @@ export function SessionLobbyPage() {
 
       <div className="w-full max-w-lg">
         <p className="text-gray-400 text-sm mb-4">{players.length} player{players.length !== 1 ? 's' : ''} joined</p>
-        <div className="flex flex-wrap gap-2 min-h-16 mb-8">
+        <div className="flex flex-wrap gap-3 min-h-16 mb-8">
           {players.map((p) => (
-            <span key={p} className="bg-gray-800 px-4 py-2 rounded-full text-sm font-medium">{p}</span>
+            <div
+              key={p.nickname}
+              className="relative bg-gray-800 px-5 py-2 rounded-full flex flex-col items-center justify-center min-w-[110px]"
+            >
+              <span className="font-bold text-base leading-tight text-center">{p.nickname}</span>
+              <span className="text-xs text-gray-400 leading-tight text-center">
+                ({p.firstName} {p.lastName})
+              </span>
+              <button
+                onClick={() => kickPlayer(p.nickname)}
+                title="Remove player"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+              >
+                ×
+              </button>
+            </div>
           ))}
         </div>
 

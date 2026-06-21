@@ -26,13 +26,29 @@ export interface AnswerSubmitPayload {
   answerIds: string[];
 }
 
+export interface KickParticipantPayload {
+  nickname: string;
+}
+
 // ─── Server → Client ─────────────────────────────────────────────────────────
 
 export interface PlayerJoinedPayload {
   nickname: string;
+  firstName: string;
+  lastName: string;
   totalPlayers: number;
   rejoined?: boolean;
   score?: number;
+}
+
+export interface PlayerKickedPayload {
+  nickname: string;
+  totalPlayers: number;
+}
+
+export interface AnswerCountUpdatePayload {
+  answeredCount: number;
+  totalPlayers: number;
 }
 
 export interface AnswerOption {
@@ -93,13 +109,16 @@ export const SOCKET_EVENTS = {
   SESSION_START: 'session:start',
   SESSION_NEXT: 'session:next',
   ANSWER_SUBMIT: 'answer:submit',
+  KICK_PARTICIPANT: 'participant:kick',
 
   // S → C
   PLAYER_JOINED: 'player:joined',
+  PLAYER_KICKED: 'player:kicked',
   QUESTION_START: 'question:start',
   QUESTION_TICK: 'question:tick',
   QUESTION_END: 'question:end',
   ANSWER_RESULT: 'answer:result',
+  ANSWER_COUNT_UPDATE: 'answer:count_update',
   LEADERBOARD_UPDATE: 'leaderboard:update',
   SESSION_FINISHED: 'session:finished',
   ERROR: 'error',

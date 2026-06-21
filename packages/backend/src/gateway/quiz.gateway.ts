@@ -133,6 +133,8 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const totalPlayers = state.participantScores.size;
       this.server.to(session.code).emit(SOCKET_EVENTS.PLAYER_JOINED, {
         nickname: existing.nickname,
+        firstName: existing.firstName,
+        lastName: existing.lastName,
         totalPlayers,
         rejoined: true,
         score: existing.score,
@@ -178,6 +180,8 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const totalPlayers = state.participantScores.size;
     this.server.to(session.code).emit(SOCKET_EVENTS.PLAYER_JOINED, {
       nickname: participant.nickname,
+      firstName: participant.firstName,
+      lastName: participant.lastName,
       totalPlayers,
     });
   }
@@ -305,6 +309,13 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       newScore: participant.score,
     });
 
+    const answeredCount = state.answeredSocketIds.size;
+    const totalParticipants = state.participantScores.size;
+    this.server.to(state.hostSocketId).emit(SOCKET_EVENTS.ANSWER_COUNT_UPDATE, {
+      answeredCount,
+      totalPlayers: totalParticipants,
+    });
+
     // If all connected participants answered, close early
     const room = this.server.sockets.adapter.rooms.get(sessionCode);
     const participantSockets = room
@@ -322,6 +333,43 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       });
       if (session) await this.closeQuestion(session, state);
     }
+  }
+
+  @SubscribeMessage(SOCKET_EVENTS.KICK_PARTICIPANT)
+  async handleKick(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() data: { nickname: string },
+  ) {
+    const sessionCode = this.socketToSession.get(socket.id);
+    if (!sessionCode) return;
+
+    const state = this.sessions.get(sessionCode);
+    if (!state || state.hostSocketId !== socket.id || state.phase !== 'waiting') return;
+
+    const session = await this.sessionRepo.findOne({ where: { code: sessionCode } });
+    if (!session) return;
+
+    const participant = await this.participantRepo.findOne({
+      where: { sessionId: session.id, nickname: ILike(data.nickname) },
+    });
+    if (!participant) return;
+
+    for (const [sockId, partId] of this.socketToParticipant.entries()) {
+      if (partId === participant.id) {
+        this.socketToParticipant.delete(sockId);
+        this.socketToSession.delete(sockId);
+        state.participantScores.delete(sockId);
+        break;
+      }
+    }
+
+    await this.participantRepo.delete({ id: participant.id });
+
+    const totalPlayers = state.participantScores.size;
+    this.server.to(sessionCode).emit(SOCKET_EVENTS.PLAYER_KICKED, {
+      nickname: participant.nickname,
+      totalPlayers,
+    });
   }
 
   private async advanceToNextQuestion(session: SessionEntity, state: GatewaySessionState) {
