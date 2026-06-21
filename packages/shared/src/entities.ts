@@ -29,6 +29,8 @@ export interface AnswerEntity {
   questionId: string;
   text: string;
   isCorrect: boolean;
+  order: number;
+  createdAt: Date;
 }
 
 export interface SessionEntity {

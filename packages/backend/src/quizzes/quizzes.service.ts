@@ -37,7 +37,7 @@ export class QuizzesService {
     const quiz = await this.quizzes.findOne({
       where: { id },
       relations: { questions: { answers: true } },
-      order: { questions: { order: 'ASC', answers: { createdAt: 'ASC' } } },
+      order: { questions: { order: 'ASC', answers: { order: 'ASC', createdAt: 'ASC' } } },
     });
     if (!quiz) throw new NotFoundException('Quiz not found');
     return quiz;
@@ -87,7 +87,8 @@ export class QuizzesService {
     const question = await this.questions.findOne({ where: { id: questionId }, relations: { quiz: true } });
     if (!question) throw new NotFoundException('Question not found');
     this.assertOwner(question.quiz, hostId);
-    const answer = this.answers.create({ questionId, ...dto });
+    const count = await this.answers.count({ where: { questionId } });
+    const answer = this.answers.create({ questionId, ...dto, order: count });
     return this.answers.save(answer);
   }
 
@@ -100,6 +101,13 @@ export class QuizzesService {
     this.assertOwner(answer.question.quiz, hostId);
     Object.assign(answer, dto);
     return this.answers.save(answer);
+  }
+
+  async reorderAnswers(questionId: string, hostId: string, answerIds: string[]) {
+    const question = await this.questions.findOne({ where: { id: questionId }, relations: { quiz: true } });
+    if (!question) throw new NotFoundException('Question not found');
+    this.assertOwner(question.quiz, hostId);
+    await Promise.all(answerIds.map((id, index) => this.answers.update({ id }, { order: index })));
   }
 
   async removeAnswer(id: string, hostId: string) {
@@ -189,7 +197,7 @@ export class QuizzesService {
       const question = await this.questions.save(
         this.questions.create({ quizId: quiz.id, ...qData, order: i + 1 }),
       );
-      await this.answers.save(ans.map((a) => this.answers.create({ questionId: question.id, ...a })));
+      await this.answers.save(ans.map((a, idx) => this.answers.create({ questionId: question.id, ...a, order: idx })));
     }
 
     return this.findOne(quiz.id);

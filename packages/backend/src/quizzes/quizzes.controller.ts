@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param,
+  Controller, Get, Post, Put, Patch, Delete, Body, Param,
   UseGuards, Request, HttpCode, UseInterceptors, UploadedFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -76,6 +76,16 @@ export class QuizzesController {
   @Post('questions/:id/answers')
   addAnswer(@Param('id') questionId: string, @Request() req: any, @Body() dto: CreateAnswerDto) {
     return this.service.addAnswer(questionId, req.user.id, dto);
+  }
+
+  @Patch('questions/:id/answers/reorder')
+  @HttpCode(204)
+  reorderAnswers(
+    @Param('id') questionId: string,
+    @Request() req: any,
+    @Body() body: { answerIds: string[] },
+  ) {
+    return this.service.reorderAnswers(questionId, req.user.id, body.answerIds);
   }
 
   @Put('answers/:id')
