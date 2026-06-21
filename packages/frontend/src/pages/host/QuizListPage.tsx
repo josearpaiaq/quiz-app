@@ -78,45 +78,41 @@ export function QuizListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white p-6">
+    <div className="min-h-screen bg-base-200 p-6">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold">My Quizzes</h1>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={() => setImportOpen(true)}
-              className="bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+              className="btn btn-ghost btn-sm"
             >
               Import CSV / Excel
             </button>
             <button
               onClick={() => createMutation.mutate()}
-              className="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-lg font-medium transition-colors"
+              className="btn btn-primary btn-sm"
             >
               + New Quiz
             </button>
-            <button onClick={logout} className="text-gray-400 hover:text-white transition-colors text-sm">
+            <button onClick={logout} className="btn btn-ghost btn-sm">
               Sign out
             </button>
           </div>
         </div>
 
         {isLoading ? (
-          <p className="text-gray-400">Loading…</p>
+          <div className="flex justify-center py-20">
+            <span className="loading loading-spinner loading-lg" />
+          </div>
         ) : quizzes.length === 0 ? (
-          <div className="text-center py-20 text-gray-500">
-            <p className="text-lg mb-4">No quizzes yet.</p>
+          <div className="text-center py-20">
+            <p className="text-lg mb-4 text-base-content/60">No quizzes yet.</p>
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => createMutation.mutate()}
-                className="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-lg font-medium transition-colors text-white"
-              >
+              <button onClick={() => createMutation.mutate()} className="btn btn-primary">
                 Create your first quiz
               </button>
-              <button
-                onClick={() => setImportOpen(true)}
-                className="bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-medium transition-colors text-white"
-              >
+              <button onClick={() => setImportOpen(true)} className="btn btn-ghost">
                 Import from file
               </button>
             </div>
@@ -124,32 +120,34 @@ export function QuizListPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {quizzes.map((quiz) => (
-              <div key={quiz.id} className="bg-gray-900 rounded-xl p-5 flex flex-col gap-3">
-                <h2 className="font-semibold text-lg truncate">{quiz.title}</h2>
-                {quiz.description && (
-                  <p className="text-gray-400 text-sm line-clamp-2">{quiz.description}</p>
-                )}
-                <div className="flex gap-2 mt-auto">
-                  <button
-                    onClick={() => navigate(`/host/quizzes/${quiz.id}/edit`)}
-                    className="flex-1 bg-gray-800 hover:bg-gray-700 px-3 py-2 rounded-lg text-sm transition-colors"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => startSession.mutate(quiz.id)}
-                    className="flex-1 bg-green-600 hover:bg-green-500 px-3 py-2 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Start
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm('Delete this quiz?')) deleteMutation.mutate(quiz.id);
-                    }}
-                    className="bg-gray-800 hover:bg-red-900 px-3 py-2 rounded-lg text-sm transition-colors"
-                  >
-                    🗑
-                  </button>
+              <div key={quiz.id} className="card bg-base-100 shadow">
+                <div className="card-body">
+                  <h2 className="card-title truncate">{quiz.title}</h2>
+                  {quiz.description && (
+                    <p className="text-base-content/60 text-sm line-clamp-2">{quiz.description}</p>
+                  )}
+                  <div className="card-actions justify-end mt-2">
+                    <button
+                      onClick={() => navigate(`/host/quizzes/${quiz.id}/edit`)}
+                      className="btn btn-ghost btn-sm"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => startSession.mutate(quiz.id)}
+                      className="btn btn-success btn-sm text-white"
+                    >
+                      Start
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (confirm('Delete this quiz?')) deleteMutation.mutate(quiz.id);
+                      }}
+                      className="btn btn-ghost btn-sm text-error"
+                    >
+                      🗑
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -159,63 +157,65 @@ export function QuizListPage() {
 
       {importOpen && (
         <div
-          className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"
+          className="modal modal-open"
           onClick={(e) => { if (e.target === e.currentTarget) closeImport(); }}
         >
-          <div className="bg-gray-900 rounded-xl p-6 w-full max-w-md mx-4 flex flex-col gap-4">
-            <h2 className="text-xl font-bold">Import Quiz</h2>
-            <p className="text-gray-400 text-sm">
+          <div className="modal-box">
+            <h2 className="text-xl font-bold mb-3">Import Quiz</h2>
+            <p className="text-base-content/60 text-sm mb-4">
               Upload a CSV or Excel file with your questions.{' '}
-              <button
-                onClick={downloadTemplate}
-                className="text-indigo-400 hover:text-indigo-300 underline"
-              >
+              <button onClick={downloadTemplate} className="link link-primary">
                 Download template
               </button>
             </p>
 
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-400">Quiz title</label>
-              <input
-                type="text"
-                value={importTitle}
-                onChange={(e) => setImportTitle(e.target.value)}
-                placeholder="My Imported Quiz"
-                className="bg-gray-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-
-            <div className="flex flex-col gap-1">
-              <label className="text-sm text-gray-400">File (.csv or .xlsx)</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".csv,.xlsx"
-                onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
-                className="text-sm text-gray-300 file:mr-3 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-gray-700 file:text-gray-200 file:cursor-pointer hover:file:bg-gray-600"
-              />
+            <div className="flex flex-col gap-3">
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">Quiz title</span>
+                </label>
+                <input
+                  type="text"
+                  value={importTitle}
+                  onChange={(e) => setImportTitle(e.target.value)}
+                  placeholder="My Imported Quiz"
+                  className="input input-bordered w-full"
+                />
+              </div>
+              <div className="form-control">
+                <label className="label">
+                  <span className="label-text">File (.csv or .xlsx)</span>
+                </label>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".csv,.xlsx"
+                  onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                  className="file-input file-input-bordered w-full"
+                />
+              </div>
             </div>
 
             {importMutation.error && (
-              <div className="bg-red-900/40 border border-red-700 rounded-lg px-3 py-2">
-                <p className="text-red-300 text-sm whitespace-pre-wrap">
+              <div className="alert alert-error mt-3">
+                <p className="text-sm whitespace-pre-wrap">
                   {(importMutation.error as Error).message}
                 </p>
               </div>
             )}
 
-            <div className="flex gap-3 justify-end pt-1">
-              <button
-                onClick={closeImport}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-              >
+            <div className="modal-action">
+              <button onClick={closeImport} className="btn btn-ghost">
                 Cancel
               </button>
               <button
                 onClick={() => importMutation.mutate()}
                 disabled={!importFile || importMutation.isPending}
-                className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="btn btn-primary"
               >
+                {importMutation.isPending && (
+                  <span className="loading loading-spinner loading-sm" />
+                )}
                 {importMutation.isPending ? 'Importing…' : 'Import'}
               </button>
             </div>

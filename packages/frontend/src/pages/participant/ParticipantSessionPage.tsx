@@ -17,6 +17,8 @@ function getAnswerFontClass(text: string): string {
   return 'text-sm font-medium';
 }
 
+const ANSWER_COLORS = ['bg-red-600', 'bg-blue-600', 'bg-yellow-500', 'bg-green-600'];
+
 export function ParticipantSessionPage() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -32,7 +34,6 @@ export function ParticipantSessionPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [totalPlayers, setTotalPlayers] = useState(0);
 
-  // Track answer result and question-end state across async socket events
   const pendingResultRef = useRef<AnswerResultPayload | null>(null);
   const questionEndedRef = useRef(false);
 
@@ -88,7 +89,6 @@ export function ParticipantSessionPage() {
       if (questionEndedRef.current) {
         setPhase('result');
       }
-      // else: stay in 'submitted' until QUESTION_END fires
     });
 
     socket.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: LeaderboardUpdatePayload) => {
@@ -140,14 +140,11 @@ export function ParticipantSessionPage() {
     setPhase('submitted');
   }
 
-  // Auto-submit when a SINGLE answer is selected
   useEffect(() => {
     if (question?.type === QuestionType.SINGLE && selected.length === 1 && phase === 'question') {
       submitAnswer();
     }
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const ANSWER_COLORS = ['bg-red-600', 'bg-blue-600', 'bg-yellow-500', 'bg-green-600'];
 
   if (phase === 'waiting') return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
@@ -163,7 +160,9 @@ export function ParticipantSessionPage() {
   if (phase === 'error') return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
       <p className="text-red-400 text-xl">{errorMsg}</p>
-      <button onClick={() => navigate('/')} className="text-indigo-400 underline">Back to join</button>
+      <button onClick={() => navigate('/')} className="btn btn-ghost text-indigo-400">
+        Back to join
+      </button>
     </div>
   );
 
@@ -207,10 +206,7 @@ export function ParticipantSessionPage() {
         </div>
 
         {question?.type === QuestionType.MULTIPLE && phase === 'question' && selected.length > 0 && (
-          <button
-            onClick={submitAnswer}
-            className="w-full bg-white text-gray-900 font-bold py-4 rounded-xl text-lg"
-          >
+          <button onClick={submitAnswer} className="btn btn-neutral w-full text-lg">
             Confirm ({selected.length} selected)
           </button>
         )}
@@ -233,7 +229,6 @@ export function ParticipantSessionPage() {
       )}
       <p className="text-gray-400">Score: {result?.newScore ?? 0}</p>
 
-      {/* Show correct answers */}
       {question && (
         <div className="w-full max-w-sm space-y-2 mt-4">
           {question.answers.map((a) => (
@@ -317,7 +312,7 @@ export function ParticipantSessionPage() {
         </div>
         <button
           onClick={() => { disconnectSocket(); navigate('/'); }}
-          className="mt-8 bg-gray-800 hover:bg-gray-700 px-6 py-3 rounded-xl font-medium transition-colors"
+          className="btn btn-ghost mt-8 text-gray-300 border-gray-700"
         >
           Play again
         </button>

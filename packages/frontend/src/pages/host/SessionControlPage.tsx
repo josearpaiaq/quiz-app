@@ -10,6 +10,8 @@ import type {
 
 type Phase = 'question' | 'results' | 'leaderboard' | 'finished';
 
+const ANSWER_COLORS = ['bg-red-600', 'bg-blue-600', 'bg-yellow-500', 'bg-green-600'];
+
 export function SessionControlPage() {
   const { code: _code } = useParams<{ code: string }>();
   const navigate = useNavigate();
@@ -83,7 +85,7 @@ export function SessionControlPage() {
 
   if (!question) return (
     <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center">
-      Waiting for question…
+      <span className="loading loading-spinner loading-lg" />
     </div>
   );
 
@@ -113,10 +115,10 @@ export function SessionControlPage() {
         {phase === 'question' && (
           <>
             <div className="grid grid-cols-2 gap-3">
-              {question.answers.map((a) => (
+              {question.answers.map((a, i) => (
                 <div
                   key={a.id}
-                  className="bg-gray-800 rounded-xl px-5 py-4 flex items-center justify-center text-center min-h-[64px]"
+                  className={`${ANSWER_COLORS[i % 4]} rounded-xl px-5 py-4 flex items-center justify-center text-center min-h-[64px]`}
                 >
                   <span className={`${a.text.length <= 20 ? 'text-lg font-bold' : a.text.length <= 40 ? 'text-base font-semibold' : 'text-sm font-medium'}`}>
                     {a.text}
@@ -124,10 +126,7 @@ export function SessionControlPage() {
                 </div>
               ))}
             </div>
-            <button
-              onClick={sendNext}
-              className="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-medium transition-colors"
-            >
+            <button onClick={sendNext} className="btn btn-ghost w-full text-gray-300 border-gray-700 hover:bg-gray-800">
               End question early
             </button>
           </>
@@ -136,11 +135,13 @@ export function SessionControlPage() {
         {(phase === 'results' || phase === 'leaderboard') && (
           <>
             <div className="grid grid-cols-2 gap-3">
-              {question.answers.map((a) => (
+              {question.answers.map((a, i) => (
                 <div
                   key={a.id}
                   className={`rounded-xl px-5 py-4 flex items-center justify-center text-center min-h-[64px] font-medium ${
-                    correctIds.includes(a.id) ? 'bg-green-700 text-white' : 'bg-gray-800 text-gray-400'
+                    correctIds.includes(a.id)
+                      ? 'bg-green-700 text-white'
+                      : `${ANSWER_COLORS[i % 4]} opacity-30 text-white`
                   }`}
                 >
                   <span className={`${a.text.length <= 20 ? 'text-lg font-bold' : a.text.length <= 40 ? 'text-base font-semibold' : 'text-sm font-medium'}`}>
@@ -164,10 +165,7 @@ export function SessionControlPage() {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={sendNext}
-                  className="w-full bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition-colors"
-                >
+                <button onClick={sendNext} className="btn btn-primary w-full">
                   {question.questionIndex + 1 < question.totalQuestions ? 'Next Question' : 'Finish'}
                 </button>
               </>
@@ -185,10 +183,7 @@ export function SessionControlPage() {
                 <span className="text-indigo-400 font-mono font-bold">{r.score}</span>
               </div>
             ))}
-            <button
-              onClick={() => navigate('/host')}
-              className="w-full bg-gray-700 hover:bg-gray-600 py-3 rounded-xl font-medium transition-colors mt-4"
-            >
+            <button onClick={() => navigate('/host')} className="btn btn-ghost w-full text-gray-300 border-gray-700 mt-4">
               Back to quizzes
             </button>
           </div>

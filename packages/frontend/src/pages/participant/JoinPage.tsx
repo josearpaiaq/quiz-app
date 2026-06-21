@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 export function JoinPage() {
   const navigate = useNavigate();
@@ -19,49 +19,57 @@ export function JoinPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-gray-900 rounded-2xl p-8 shadow-xl">
-        <h1 className="text-3xl font-bold text-white mb-2 text-center">Join Quiz</h1>
-        <p className="text-gray-400 text-center text-sm mb-8">Enter the room code from your host</p>
+    <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+      <div className="card w-full max-w-sm bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h1 className="card-title text-3xl justify-center mb-1">Join Quiz</h1>
+          <p className="text-base-content/60 text-center text-sm mb-4">
+            Enter the room code from your host
+          </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            placeholder="Room Code"
-            value={code}
-            onChange={(e) => setCode(e.target.value.toUpperCase())}
-            maxLength={6}
-            required
-            className="w-full bg-gray-800 text-white text-center text-2xl font-mono tracking-widest rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
-          />
-          <input
-            placeholder="First Name"
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            required
-            className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            placeholder="Last Name"
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-            required
-            className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            placeholder="Nickname (shown in game)"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-            required
-            className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button
-            type="submit"
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-colors text-lg"
-          >
-            Join →
-          </button>
-        </form>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input
+              placeholder="ROOM CODE"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              maxLength={6}
+              required
+              className="input input-bordered w-full text-center text-2xl font-mono tracking-widest uppercase"
+            />
+            <input
+              placeholder="First Name"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              className="input input-bordered w-full"
+            />
+            <input
+              placeholder="Last Name"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              className="input input-bordered w-full"
+            />
+            <input
+              placeholder="Nickname (shown in game)"
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              required
+              className="input input-bordered w-full"
+            />
+            {error && <p className="text-error text-sm">{error}</p>}
+            <button type="submit" className="btn btn-primary w-full text-lg mt-1">
+              Join →
+            </button>
+          </form>
+
+          <p className="text-center text-xs text-base-content/40 mt-4">
+            Hosting a quiz?{' '}
+            <Link to="/host" className="link link-hover">
+              Sign in here
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

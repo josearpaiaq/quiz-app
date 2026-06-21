@@ -81,26 +81,28 @@ export function SessionLobbyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-6">
-      <p className="text-gray-400 mb-2 uppercase tracking-widest text-sm">Room code</p>
-      <h1 className="text-8xl font-mono font-bold tracking-widest text-indigo-400 mb-12">{code}</h1>
+    <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-6">
+      <p className="text-base-content/60 mb-2 uppercase tracking-widest text-sm">Room code</p>
+      <h1 className="text-8xl font-mono font-bold tracking-widest text-primary mb-12">{code}</h1>
 
       <div className="w-full max-w-lg">
-        <p className="text-gray-400 text-sm mb-4">{players.length} player{players.length !== 1 ? 's' : ''} joined</p>
+        <p className="text-base-content/60 text-sm mb-4">
+          {players.length} player{players.length !== 1 ? 's' : ''} joined
+        </p>
         <div className="flex flex-wrap gap-3 min-h-16 mb-8">
           {players.map((p) => (
             <div
               key={p.nickname}
-              className="relative bg-gray-800 px-5 py-2 rounded-full flex flex-col items-center justify-center min-w-[110px]"
+              className="relative bg-base-100 shadow px-5 py-2 rounded-full flex flex-col items-center justify-center min-w-[110px]"
             >
               <span className="font-bold text-base leading-tight text-center">{p.nickname}</span>
-              <span className="text-xs text-gray-400 leading-tight text-center">
+              <span className="text-xs text-base-content/50 leading-tight text-center">
                 ({p.firstName} {p.lastName})
               </span>
               <button
                 onClick={() => kickPlayer(p.nickname)}
                 title="Remove player"
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-600 hover:bg-red-500 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
+                className="btn btn-circle btn-xs btn-error absolute -top-2 -right-2"
               >
                 ×
               </button>
@@ -111,7 +113,7 @@ export function SessionLobbyPage() {
         <button
           onClick={startSession}
           disabled={players.length === 0 || !sessionId}
-          className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 disabled:cursor-not-allowed py-4 rounded-xl text-lg font-bold transition-colors"
+          className="btn btn-success btn-lg w-full text-white"
         >
           Start Quiz
         </button>

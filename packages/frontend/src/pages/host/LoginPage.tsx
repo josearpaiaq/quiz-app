@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 export function LoginPage() {
@@ -8,6 +9,7 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login, register } = useAuth();
   const navigate = useNavigate();
 
@@ -27,51 +29,62 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-gray-900 rounded-2xl p-8 shadow-xl">
-        <h1 className="text-2xl font-bold text-white mb-6 text-center">Quiz Host</h1>
+    <div className="min-h-screen bg-base-200 flex items-center justify-center p-4">
+      <div className="card w-full max-w-sm bg-base-100 shadow-xl">
+        <div className="card-body">
+          <h1 className="card-title text-2xl justify-center mb-2">Quiz Host</h1>
 
-        <div className="flex mb-6 rounded-lg overflow-hidden border border-gray-700">
-          {(['login', 'register'] as const).map((m) => (
+          <div role="tablist" className="tabs tabs-box mb-2">
+            {(['login', 'register'] as const).map((m) => (
+              <button
+                key={m}
+                role="tab"
+                onClick={() => setMode(m)}
+                className={`tab flex-1 capitalize ${mode === m ? 'tab-active' : ''}`}
+              >
+                {m}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="input input-bordered w-full"
+            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={mode === 'register' ? 8 : 1}
+                className="input input-bordered w-full pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content transition-colors"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {error && <p className="text-error text-sm">{error}</p>}
             <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`flex-1 py-2 text-sm font-medium capitalize transition-colors ${
-                mode === m ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white'
-              }`}
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary w-full mt-1"
             >
-              {m}
+              {loading && <span className="loading loading-spinner loading-sm" />}
+              {loading ? 'Loading…' : mode === 'login' ? 'Sign in' : 'Create account'}
             </button>
-          ))}
+          </form>
         </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={mode === 'register' ? 8 : 1}
-            className="w-full bg-gray-800 text-white rounded-lg px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500"
-          />
-          {error && <p className="text-red-400 text-sm">{error}</p>}
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold py-3 rounded-lg transition-colors"
-          >
-            {loading ? 'Loading…' : mode === 'login' ? 'Sign in' : 'Create account'}
-          </button>
-        </form>
       </div>
     </div>
   );
