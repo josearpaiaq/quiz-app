@@ -18,6 +18,7 @@ function getAnswerFontClass(text: string): string {
 }
 
 const ANSWER_COLORS = ['bg-red-600', 'bg-blue-600', 'bg-yellow-500', 'bg-green-600'];
+const RESULT_MIN_MS = 4500;
 
 export function ParticipantSessionPage() {
   const { code } = useParams<{ code: string }>();
@@ -34,8 +35,8 @@ export function ParticipantSessionPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [totalPlayers, setTotalPlayers] = useState(0);
 
-  const pendingResultRef = useRef<AnswerResultPayload | null>(null);
-  const questionEndedRef = useRef(false);
+  // Tracks when QUESTION_END fired so leaderboard can be buffered
+  const questionEndedAtRef = useRef<number>(0);
 
   useEffect(() => {
     const info = JSON.parse(sessionStorage.getItem('participant_info') ?? '{}');
@@ -43,7 +44,6 @@ export function ParticipantSessionPage() {
     setNickname(info.nickname);
 
     const socket = getSocket();
-
     joinSession(code!, info);
 
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, (data: any) => {
@@ -55,9 +55,7 @@ export function ParticipantSessionPage() {
 
     socket.on(SOCKET_EVENTS.PLAYER_KICKED, (data: { nickname: string; totalPlayers: number }) => {
       setTotalPlayers(data.totalPlayers);
-      if (data.nickname.toLowerCase() === info.nickname.toLowerCase()) {
-        navigate('/');
-      }
+      if (data.nickname.toLowerCase() === info.nickname.toLowerCase()) navigate('/');
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_START, (data: QuestionStartPayload) => {
@@ -67,8 +65,7 @@ export function ParticipantSessionPage() {
       setCorrectIds([]);
       setRemainingMs(data.timeLimitMs);
       setPhase('question');
-      pendingResultRef.current = null;
-      questionEndedRef.current = false;
+      questionEndedAtRef.current = 0;
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_TICK, (data: QuestionTickPayload) => {
@@ -76,24 +73,21 @@ export function ParticipantSessionPage() {
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_END, (data: QuestionEndPayload) => {
+      questionEndedAtRef.current = Date.now();
       setCorrectIds(data.correctAnswerIds);
-      questionEndedRef.current = true;
-      if (pendingResultRef.current) {
-        setPhase('result');
-      }
+      setRemainingMs(0);
+      setPhase('result');
     });
 
     socket.on(SOCKET_EVENTS.ANSWER_RESULT, (data: AnswerResultPayload) => {
       setResult(data);
-      pendingResultRef.current = data;
-      if (questionEndedRef.current) {
-        setPhase('result');
-      }
     });
 
     socket.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: LeaderboardUpdatePayload) => {
       setRankings(data.rankings);
-      setPhase('leaderboard');
+      const elapsed = Date.now() - questionEndedAtRef.current;
+      const delay = Math.max(0, RESULT_MIN_MS - elapsed);
+      setTimeout(() => setPhase('leaderboard'), delay);
     });
 
     socket.on(SOCKET_EVENTS.SESSION_FINISHED, (data: SessionFinishedPayload) => {
@@ -140,12 +134,14 @@ export function ParticipantSessionPage() {
     setPhase('submitted');
   }
 
+  // Auto-submit on SINGLE selection
   useEffect(() => {
     if (question?.type === QuestionType.SINGLE && selected.length === 1 && phase === 'question') {
       submitAnswer();
     }
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ─── Waiting ──────────────────────────────────────────────────────────────
   if (phase === 'waiting') return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
       <div className="w-12 h-12 rounded-full bg-indigo-600 flex items-center justify-center text-xl font-bold">
@@ -157,6 +153,7 @@ export function ParticipantSessionPage() {
     </div>
   );
 
+  // ─── Error ────────────────────────────────────────────────────────────────
   if (phase === 'error') return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-4">
       <p className="text-red-400 text-xl">{errorMsg}</p>
@@ -166,9 +163,9 @@ export function ParticipantSessionPage() {
     </div>
   );
 
+  // ─── Active question ──────────────────────────────────────────────────────
   if (phase === 'question' || phase === 'submitted') return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
-      {/* Timer bar */}
       <div className="h-2 bg-gray-700">
         <div
           className="h-full bg-indigo-500 transition-all duration-1000"
@@ -212,42 +209,107 @@ export function ParticipantSessionPage() {
         )}
 
         {phase === 'submitted' && (
-          <p className="text-center text-gray-400">Answer submitted — waiting for question to close…</p>
+          <p className="text-center text-gray-400 text-sm">Answer submitted — waiting for results…</p>
         )}
       </div>
     </div>
   );
 
-  if (phase === 'result') return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-6 p-6">
-      <div className="text-6xl">
-        {result?.correct ? '🎉' : '😢'}
-      </div>
-      <h2 className="text-3xl font-bold">{result?.correct ? 'Correct!' : 'Incorrect'}</h2>
-      {result?.correct && (
-        <p className="text-indigo-400 text-2xl font-mono">+{result.pointsEarned} pts</p>
-      )}
-      <p className="text-gray-400">Score: {result?.newScore ?? 0}</p>
+  // ─── Result (question ended) ───────────────────────────────────────────────
+  if (phase === 'result') {
+    const answered = selected.length > 0;
+    const speedPct = result && question
+      ? Math.round((result.pointsEarned / question.maxPoints) * 100)
+      : 0;
+    const responseSeconds = result ? (result.responseTimeMs / 1000).toFixed(1) : null;
 
-      {question && (
-        <div className="w-full max-w-sm space-y-2 mt-4">
-          {question.answers.map((a) => (
-            <div
-              key={a.id}
-              className={`rounded-lg px-4 py-3 text-sm ${
-                correctIds.includes(a.id) ? 'bg-green-700 font-bold' : 'bg-gray-800 text-gray-400'
-              }`}
-            >
-              {correctIds.includes(a.id) && '✓ '}{a.text}
-            </div>
-          ))}
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col">
+        {/* Timer bar depleted */}
+        <div className="h-2 bg-gray-700">
+          <div className="h-full bg-indigo-500 w-0" />
         </div>
-      )}
 
-      <p className="text-gray-500 text-sm mt-4">Waiting for leaderboard…</p>
-    </div>
-  );
+        <div className="flex-1 flex flex-col p-4 gap-4 overflow-y-auto">
+          <div className="flex items-center justify-between text-sm text-gray-400">
+            <span>{question?.questionIndex != null ? `Q${question.questionIndex + 1}/${question.totalQuestions}` : ''}</span>
+            <span className="font-mono text-gray-500 text-base">0s</span>
+          </div>
 
+          <h2 className="text-lg font-bold text-center">{question?.text}</h2>
+
+          {/* Answers with result coloring */}
+          <div className="grid grid-cols-2 gap-3">
+            {question?.answers.map((a, i) => {
+              const isCorrect = correctIds.includes(a.id);
+              const wasSelected = selected.includes(a.id);
+              return (
+                <div
+                  key={a.id}
+                  className={`${ANSWER_COLORS[i % 4]} rounded-xl p-3 flex flex-col items-center justify-center text-center min-h-[72px] transition-all ${
+                    isCorrect ? 'ring-4 ring-white brightness-110' : 'opacity-30'
+                  }`}
+                >
+                  {isCorrect && <span className="text-xl mb-0.5">✓</span>}
+                  {!isCorrect && wasSelected && <span className="text-xl mb-0.5">✗</span>}
+                  <span className={getAnswerFontClass(a.text)}>{a.text}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Personal result card */}
+          {answered ? (
+            <div className={`rounded-2xl p-5 text-center border ${
+              result?.correct
+                ? 'bg-green-900/40 border-green-600'
+                : 'bg-red-900/40 border-red-700'
+            }`}>
+              <div className="text-5xl mb-2">{result?.correct ? '🎉' : '😢'}</div>
+              <h3 className="text-2xl font-bold mb-3">
+                {result ? (result.correct ? 'Correct!' : 'Incorrect') : '…'}
+              </h3>
+
+              {result?.correct ? (
+                <>
+                  <p className="text-5xl font-mono font-bold text-green-400 mb-2">
+                    +{result.pointsEarned}
+                  </p>
+                  <div className="flex justify-center gap-4 text-sm text-gray-400 mb-3">
+                    <span>⏱ {responseSeconds}s</span>
+                    <span>·</span>
+                    <span>Speed {speedPct}%</span>
+                  </div>
+                </>
+              ) : (
+                responseSeconds && (
+                  <p className="text-sm text-gray-400 mb-3">⏱ Answered in {responseSeconds}s</p>
+                )
+              )}
+
+              <p className="text-gray-300 text-sm">
+                Total:{' '}
+                <span className="font-mono font-bold text-white text-lg">
+                  {result?.newScore ?? 0}
+                </span>{' '}
+                pts
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-2xl p-5 text-center border border-gray-700 bg-gray-800/50">
+              <div className="text-5xl mb-2">⏰</div>
+              <h3 className="text-xl font-bold text-gray-400">Time's up!</h3>
+              <p className="text-gray-500 text-sm mt-1">You didn't answer in time</p>
+            </div>
+          )}
+
+          <p className="text-center text-gray-600 text-xs pb-2">Leaderboard coming up…</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Leaderboard ──────────────────────────────────────────────────────────
   if (phase === 'leaderboard') {
     const myRank = rankings.find((r) => r.nickname.toLowerCase() === nickname.toLowerCase());
     return (
@@ -284,6 +346,7 @@ export function ParticipantSessionPage() {
     );
   }
 
+  // ─── Finished ─────────────────────────────────────────────────────────────
   if (phase === 'finished') {
     const myRank = rankings.find((r) => r.nickname.toLowerCase() === nickname.toLowerCase());
     return (

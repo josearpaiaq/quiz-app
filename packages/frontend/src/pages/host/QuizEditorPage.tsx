@@ -165,14 +165,14 @@ export function QuizEditorPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-base-200 flex flex-col">
+    <div className="h-screen bg-base-200 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-4 px-6 py-3 bg-base-100 border-b border-base-300">
+      <div className="flex items-center gap-3 px-4 py-3 bg-base-100 border-b border-base-300 shrink-0">
         <button onClick={() => navigate('/host')} className="btn btn-ghost btn-sm btn-circle text-lg">
           ←
         </button>
         <input
-          className="bg-transparent text-xl font-bold flex-1 outline-none border-b-2 border-transparent hover:border-base-300 focus:border-primary transition-colors placeholder-base-content/30 pb-0.5"
+          className="bg-transparent text-lg font-bold flex-1 outline-none border-b-2 border-transparent hover:border-base-300 focus:border-primary transition-colors placeholder-base-content/30 pb-0.5 min-w-0"
           value={titleValue}
           placeholder="Quiz title"
           autoComplete="off"
@@ -183,167 +183,157 @@ export function QuizEditorPage() {
             }
           }}
         />
-        <div className={`flex items-center gap-1.5 text-xs text-base-content/40 transition-opacity duration-200 ${isMutating > 0 ? 'opacity-100' : 'opacity-0'}`}>
+        <div className={`flex items-center gap-1.5 text-xs text-base-content/40 transition-opacity duration-200 shrink-0 ${isMutating > 0 ? 'opacity-100' : 'opacity-0'}`}>
           <span className="loading loading-spinner loading-xs" />
-          Saving…
+          <span className="hidden sm:inline">Saving…</span>
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-64 border-r border-base-300 bg-base-100 flex flex-col">
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {questions.map((q, i) => (
-              <button
-                key={q.id}
-                onClick={() => setSelectedQ(q.id)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
-                  activeQ?.id === q.id
-                    ? 'bg-primary text-primary-content'
-                    : 'bg-base-200 hover:bg-base-300'
-                }`}
-              >
-                <span className="opacity-50 text-xs mr-2">#{i + 1}</span>
-                {q.text.slice(0, 40)}
-              </button>
-            ))}
-          </div>
-          <div className="p-3 border-t border-base-300">
+      {/* Question strip — horizontal scroll with fixed Add button */}
+      <div className="flex items-center bg-base-100 border-b border-base-300 shrink-0">
+        <div className="flex items-center gap-2 px-3 py-2 overflow-x-auto flex-1 min-w-0">
+          {questions.map((q, i) => (
             <button
-              onClick={() => addQuestion.mutate()}
-              className="btn btn-ghost btn-sm w-full"
+              key={q.id}
+              onClick={() => setSelectedQ(q.id)}
+              className={`shrink-0 px-3 py-1.5 rounded-lg text-sm transition-colors whitespace-nowrap max-w-[160px] truncate ${
+                activeQ?.id === q.id
+                  ? 'bg-primary text-primary-content font-medium'
+                  : 'bg-base-200 hover:bg-base-300 text-base-content'
+              }`}
             >
-              + Add Question
+              <span className="opacity-60 mr-1">#{i + 1}</span>
+              {q.text.length > 22 ? q.text.slice(0, 22) + '…' : q.text}
+            </button>
+          ))}
+        </div>
+        <div className="shrink-0 px-2 border-l border-base-300">
+          <button onClick={() => addQuestion.mutate()} className="btn btn-ghost btn-sm">
+            + Add
+          </button>
+        </div>
+      </div>
+
+      {/* Editor panel */}
+      {activeQ ? (
+        <div key={activeQ.id} className="flex-1 overflow-y-auto p-4 space-y-5 max-w-2xl mx-auto w-full">
+          {/* Question text */}
+          <textarea
+            className="textarea textarea-bordered w-full text-base resize-none"
+            rows={3}
+            value={questionText}
+            autoComplete="off"
+            onChange={(e) => setQuestionText(e.target.value)}
+            onBlur={() => {
+              if (questionText !== activeQ.text) {
+                updateQuestion.mutate({ qId: activeQ.id, data: { text: questionText } });
+              }
+            }}
+          />
+
+          {/* Controls row */}
+          <div className="space-y-2">
+            <div className="flex gap-2 items-center">
+              <div className="join">
+                {[QuestionType.SINGLE, QuestionType.MULTIPLE].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => handleTypeChange(t)}
+                    className={`btn btn-sm join-item capitalize ${
+                      activeQ.type === t ? 'btn-primary' : 'btn-ghost'
+                    }`}
+                  >
+                    {t.toLowerCase()}
+                  </button>
+                ))}
+              </div>
+              <select
+                value={activeQ.timeLimit}
+                onChange={(e) =>
+                  updateQuestion.mutate({ qId: activeQ.id, data: { timeLimit: Number(e.target.value) } })
+                }
+                className="select select-bordered select-sm flex-1"
+              >
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t} value={t}>{t}s</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={() => { if (confirm('Delete question?')) deleteQuestion.mutate(activeQ.id); }}
+              className="btn btn-sm btn-outline btn-error w-full"
+            >
+              Delete this question
             </button>
           </div>
-        </div>
 
-        {/* Editor panel */}
-        {activeQ ? (
-          <div key={activeQ.id} className="flex-1 overflow-y-auto p-6 space-y-6">
-            <div className="space-y-3">
-              <textarea
-                className="textarea textarea-bordered w-full text-lg resize-none"
-                rows={3}
-                value={questionText}
-                autoComplete="off"
-                onChange={(e) => setQuestionText(e.target.value)}
-                onBlur={() => {
-                  if (questionText !== activeQ.text) {
-                    updateQuestion.mutate({ qId: activeQ.id, data: { text: questionText } });
-                  }
-                }}
-              />
-
-              <div className="flex gap-3 flex-wrap items-center">
-                {/* Type toggle */}
-                <div className="join">
-                  {[QuestionType.SINGLE, QuestionType.MULTIPLE].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => handleTypeChange(t)}
-                      className={`btn btn-sm join-item capitalize ${
-                        activeQ.type === t ? 'btn-primary' : 'btn-ghost'
-                      }`}
-                    >
-                      {t.toLowerCase()}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Time limit */}
-                <select
-                  value={activeQ.timeLimit}
-                  onChange={(e) =>
-                    updateQuestion.mutate({ qId: activeQ.id, data: { timeLimit: Number(e.target.value) } })
-                  }
-                  className="select select-bordered select-sm"
-                >
-                  {TIME_OPTIONS.map((t) => (
-                    <option key={t} value={t}>
-                      {t}s
-                    </option>
-                  ))}
-                </select>
-
-                <button
-                  onClick={() => {
-                    if (confirm('Delete question?')) deleteQuestion.mutate(activeQ.id);
-                  }}
-                  className="btn btn-ghost btn-sm text-amber-700 ml-auto"
-                >
-                  Delete question
-                </button>
-              </div>
-            </div>
-
-            {/* Answers */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-base-content/60 uppercase tracking-wide">
-                Answers
-              </h3>
-              {sortedAnswers(activeQ.answers).map((a, i) => (
-                <div
-                  key={a.id}
-                  draggable
-                  onDragStart={() => handleDragStart(a.id)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => handleDrop(a.id)}
-                  className="flex items-center gap-3 bg-base-100 border border-base-300 rounded-lg px-3 py-3 cursor-grab active:cursor-grabbing"
-                >
-                  <GripVertical size={16} className="text-base-content/30 shrink-0" />
-                  <span className="text-xs text-base-content/40 w-4 shrink-0 select-none">{i + 1}</span>
-                  <input
-                    type={activeQ.type === QuestionType.SINGLE ? 'radio' : 'checkbox'}
-                    name={activeQ.type === QuestionType.SINGLE ? `correct-${activeQ.id}` : undefined}
-                    checked={a.isCorrect}
-                    onChange={(e) => handleCorrectToggle(a.id, e.target.checked)}
-                    className={activeQ.type === QuestionType.SINGLE
-                      ? 'radio radio-success radio-sm shrink-0'
-                      : 'checkbox checkbox-success checkbox-sm shrink-0'}
-                  />
-                  <input
-                    className="flex-1 bg-transparent outline-none"
-                    value={answerTexts[a.id] ?? a.text}
-                    autoComplete="off"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onChange={(e) =>
-                      setAnswerTexts((prev) => ({ ...prev, [a.id]: e.target.value }))
+          {/* Answers */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-base-content/50 uppercase tracking-wider">
+              Answers {activeQ.answers.length}/4
+            </h3>
+            {sortedAnswers(activeQ.answers).map((a, i) => (
+              <div
+                key={a.id}
+                draggable
+                onDragStart={() => handleDragStart(a.id)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => handleDrop(a.id)}
+                className="flex items-center gap-2 bg-base-100 border border-base-300 rounded-lg px-3 py-2.5 cursor-grab active:cursor-grabbing"
+              >
+                <GripVertical size={15} className="text-base-content/25 shrink-0" />
+                <span className="text-xs text-base-content/35 w-4 shrink-0 select-none">{i + 1}</span>
+                <input
+                  type={activeQ.type === QuestionType.SINGLE ? 'radio' : 'checkbox'}
+                  name={activeQ.type === QuestionType.SINGLE ? `correct-${activeQ.id}` : undefined}
+                  checked={a.isCorrect}
+                  onChange={(e) => handleCorrectToggle(a.id, e.target.checked)}
+                  className={activeQ.type === QuestionType.SINGLE
+                    ? 'radio radio-success radio-sm shrink-0'
+                    : 'checkbox checkbox-success checkbox-sm shrink-0'}
+                />
+                <input
+                  className="flex-1 bg-transparent outline-none text-sm min-w-0"
+                  value={answerTexts[a.id] ?? a.text}
+                  autoComplete="off"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onChange={(e) => setAnswerTexts((prev) => ({ ...prev, [a.id]: e.target.value }))}
+                  onBlur={() => {
+                    const current = answerTexts[a.id] ?? a.text;
+                    if (current !== a.text) {
+                      updateAnswer.mutate({ aId: a.id, data: { text: current } });
                     }
-                    onBlur={() => {
-                      const current = answerTexts[a.id] ?? a.text;
-                      if (current !== a.text) {
-                        updateAnswer.mutate({ aId: a.id, data: { text: current } });
-                      }
-                    }}
-                  />
-                  {savingAnswerIds.has(a.id)
-                    ? <span className="loading loading-spinner loading-xs text-base-content/30 shrink-0" />
-                    : (
-                      <button
-                        onClick={() => deleteAnswer.mutate(a.id)}
-                        className="btn btn-ghost btn-xs text-error shrink-0"
-                      >
-                        ✕
-                      </button>
-                    )
-                  }
-                </div>
-              ))}
+                  }}
+                />
+                {savingAnswerIds.has(a.id)
+                  ? <span className="loading loading-spinner loading-xs text-base-content/30 shrink-0" />
+                  : (
+                    <button
+                      onClick={() => deleteAnswer.mutate(a.id)}
+                      className="btn btn-ghost btn-xs text-error shrink-0"
+                    >
+                      ✕
+                    </button>
+                  )
+                }
+              </div>
+            ))}
+
+            {activeQ.answers.length < 4 && (
               <button
                 onClick={() => addAnswer.mutate(activeQ.id)}
                 className="btn btn-ghost btn-sm w-full"
               >
                 + Add Answer
               </button>
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-base-content/40">
-            Select or add a question
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-base-content/40">
+          Select or add a question
+        </div>
+      )}
     </div>
   );
 }
