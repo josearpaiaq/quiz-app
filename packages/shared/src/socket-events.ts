@@ -79,6 +79,7 @@ export interface AnswerResultPayload {
   correct: boolean;
   pointsEarned: number;
   newScore: number;
+  responseTimeMs: number;
 }
 
 export interface RankingEntry {

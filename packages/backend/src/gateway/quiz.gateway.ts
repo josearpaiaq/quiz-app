@@ -307,6 +307,7 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       correct: pointsEarned > 0,
       pointsEarned,
       newScore: participant.score,
+      responseTimeMs,
     });
 
     const answeredCount = state.answeredSocketIds.size;
