@@ -133,7 +133,7 @@ export function ParticipantSessionPage() {
   if (phase === 'waiting') return (
     <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center gap-4 p-6">
       <div className="avatar placeholder">
-        <div className="bg-primary text-primary-content rounded-full w-16">
+        <div className="bg-primary text-primary-content rounded-full w-16 flex items-center justify-center">
           <span className="text-2xl font-bold">{nickname[0]?.toUpperCase()}</span>
         </div>
       </div>
