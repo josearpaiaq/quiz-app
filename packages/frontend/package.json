@@ -11,6 +11,8 @@
   "dependencies": {
     "@quiz/shared": "workspace:*",
     "@tanstack/react-query": "^5.74.4",
+    "daisyui": "^5.5.23",
+    "lucide-react": "^1.21.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router-dom": "^7.3.0",

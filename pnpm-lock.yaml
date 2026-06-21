@@ -152,6 +152,12 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.74.4
         version: 5.101.0(react@19.2.7)
+      daisyui:
+        specifier: ^5.5.23
+        version: 5.5.23
+      lucide-react:
+        specifier: ^1.21.0
+        version: 1.21.0(react@19.2.7)
       react:
         specifier: ^19.2.6
         version: 19.2.7
@@ -1797,6 +1803,9 @@ packages:
   csstype@3.2.3:
     resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
 
+  daisyui@5.5.23:
+    resolution: {integrity: sha512-xuheNUSL4T6ZVtWXoioqcNkjoyGX85QTDz4HTw2aBPfqk4fuMjax5HDo8qCmpV6M1YN8bGvfx5BpYCoDeRlt+A==}
+
   dayjs@1.11.21:
     resolution: {integrity: sha512-98IT+HOahAisibz/yjKbzuOBwYcjJ7BCLPzARyHiyEBmRz4fatF+KPJszEHXsGYjUG234aH/cOjW1wwTbKUZlA==}
 
@@ -2585,6 +2594,11 @@ packages:
 
   lru-cache@5.1.1:
     resolution: {integrity: sha512-KpNARQA3Iwv+jTA0utUVVbrh+Jlrr1Fv0e56GGzAFOXN7dk/FviaDW8LHmK52DlcH4WP2n6gI8vN1aesBFgo9w==}
+
+  lucide-react@1.21.0:
+    resolution: {integrity: sha512-reEZMXq8Qdd5jg5XYkQ5TR1fB/GiQ7ih4vcrthYDtgjSDwh0i6/YLiGjsWsIwgN49gpAnd4J2elSNzncMEEUUQ==}
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
   magic-string@0.30.17:
     resolution: {integrity: sha512-sNPKHvyjVf7gyjwS4xGTaW/mCnF8wnjtifKBEhxfZ7E/S8tQ0rssrwGNn6q8JH/ohItJfSQp9mBtQYuTlH5QnA==}
@@ -5403,6 +5417,8 @@ snapshots:
 
   csstype@3.2.3: {}
 
+  daisyui@5.5.23: {}
+
   dayjs@1.11.21: {}
 
   debug@4.4.3:
@@ -6370,6 +6386,10 @@ snapshots:
   lru-cache@5.1.1:
     dependencies:
       yallist: 3.1.1
+
+  lucide-react@1.21.0(react@19.2.7):
+    dependencies:
+      react: 19.2.7
 
   magic-string@0.30.17:
     dependencies:
