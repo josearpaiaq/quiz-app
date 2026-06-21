@@ -108,7 +108,7 @@ export function QuizEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+    <div className="h-screen overflow-hidden bg-gray-950 text-white flex flex-col">
       {/* Header */}
       <div className="flex items-center gap-4 px-6 py-4 border-b border-gray-800">
         <button onClick={() => navigate('/host')} className="text-gray-400 hover:text-white text-lg">
