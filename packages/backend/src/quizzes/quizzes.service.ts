@@ -127,7 +127,10 @@ export class QuizzesService {
   ): Promise<QuizEntity> {
     if (!file) throw new BadRequestException('File is required');
 
-    const wb = xlsx.read(file.buffer, { type: 'buffer' });
+    const isCSV = file.originalname.toLowerCase().endsWith('.csv');
+    const wb = isCSV
+      ? xlsx.read(file.buffer.toString('utf-8'), { type: 'string' })
+      : xlsx.read(file.buffer, { type: 'buffer' });
     const sheet = wb.Sheets[wb.SheetNames[0]];
     const rows = xlsx.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '', raw: false });
 
