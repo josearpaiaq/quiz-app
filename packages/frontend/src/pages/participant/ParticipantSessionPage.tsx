@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSocket, disconnectSocket } from '../../lib/socket';
+import { getSocket, joinSession, disconnectSocket } from '../../lib/socket';
 import { SOCKET_EVENTS, QuestionType } from '@quiz/shared';
 import type {
   QuestionStartPayload, QuestionTickPayload, QuestionEndPayload,
@@ -32,7 +32,7 @@ export function ParticipantSessionPage() {
 
     const socket = getSocket();
 
-    socket.emit(SOCKET_EVENTS.SESSION_JOIN, { code, ...info });
+    joinSession(code!, info);
 
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, (data: any) => {
       setTotalPlayers(data.totalPlayers);

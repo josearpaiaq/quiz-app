@@ -26,8 +26,11 @@ export function SessionLobbyPage() {
   }, [session]);
 
   useEffect(() => {
+    if (!code) return;
     const token = sessionStorage.getItem('access_token') ?? undefined;
     const socket = getSocket(token);
+
+    socket.emit(SOCKET_EVENTS.SESSION_HOST_JOIN, { code });
 
     const onJoined = (data: PlayerJoinedPayload) => {
       setPlayers((prev) => {
@@ -38,14 +41,14 @@ export function SessionLobbyPage() {
 
     socket.on(SOCKET_EVENTS.PLAYER_JOINED, onJoined);
     return () => { socket.off(SOCKET_EVENTS.PLAYER_JOINED, onJoined); };
-  }, []);
+  }, [code]);
 
   function startSession() {
     const token = sessionStorage.getItem('access_token') ?? undefined;
     const socket = getSocket(token);
     socket.emit(SOCKET_EVENTS.SESSION_START, { sessionId });
-    socket.once(SOCKET_EVENTS.QUESTION_START, () => {
-      navigate(`/host/sessions/${code}/control`);
+    socket.once(SOCKET_EVENTS.QUESTION_START, (data) => {
+      navigate(`/host/sessions/${code}/control`, { state: { sessionId, firstQuestion: data } });
     });
   }
 

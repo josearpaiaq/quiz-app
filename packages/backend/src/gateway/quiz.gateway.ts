@@ -5,7 +5,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { SessionEntity } from '../database/entities/session.entity';
 import { ParticipantEntity } from '../database/entities/participant.entity';
 import { ParticipantAnswerEntity } from '../database/entities/participant-answer.entity';
@@ -57,6 +57,39 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketToParticipant.delete(socket.id);
   }
 
+  @SubscribeMessage(SOCKET_EVENTS.SESSION_HOST_JOIN)
+  async handleHostJoin(
+    @ConnectedSocket() socket: Socket,
+    @MessageBody() data: { code: string },
+  ) {
+    const hostId = this.resolveHostId(socket);
+    if (!hostId) return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Unauthorized' });
+
+    const session = await this.sessionRepo.findOne({
+      where: { code: data.code.toUpperCase() },
+    });
+    if (!session || session.hostId !== hostId) return;
+
+    await socket.join(session.code);
+    this.socketToSession.set(socket.id, session.code);
+
+    let state = this.sessions.get(session.code);
+    if (!state) {
+      state = {
+        sessionId: session.id,
+        hostSocketId: socket.id,
+        phase: 'waiting',
+        currentQuestionIdx: -1,
+        questionStartedAt: null,
+        tickInterval: null,
+        answeredSocketIds: new Set(),
+        participantScores: new Map(),
+      };
+      this.sessions.set(session.code, state);
+    }
+    state.hostSocketId = socket.id;
+  }
+
   @SubscribeMessage(SOCKET_EVENTS.SESSION_JOIN)
   async handleJoin(
     @ConnectedSocket() socket: Socket,
@@ -64,7 +97,6 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     const session = await this.sessionRepo.findOne({
       where: { code: data.code.toUpperCase() },
-      relations: { participants: true },
     });
 
     if (!session) return socket.emit(SOCKET_EVENTS.ERROR, { message: 'Session not found' });
@@ -73,10 +105,10 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     await socket.join(data.code.toUpperCase());
 
-    // Check for rejoin
-    const existing = session.participants.find(
-      (p) => p.nickname.toLowerCase() === data.nickname.toLowerCase(),
-    );
+    // Check for rejoin — query DB directly to avoid race conditions
+    const existing = await this.participantRepo.findOne({
+      where: { sessionId: session.id, nickname: ILike(data.nickname) },
+    });
 
     let state = this.sessions.get(session.code);
     if (!state) {
@@ -98,13 +130,36 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.socketToSession.set(socket.id, session.code);
       state.participantScores.set(socket.id, existing.score);
 
-      const totalPlayers = session.participants.length;
+      const totalPlayers = state.participantScores.size;
       this.server.to(session.code).emit(SOCKET_EVENTS.PLAYER_JOINED, {
         nickname: existing.nickname,
         totalPlayers,
         rejoined: true,
         score: existing.score,
       });
+
+      // If session is already running, send current question state to the rejoining participant
+      if (state.phase === 'question_open' && state.currentQuestionIdx >= 0) {
+        const activeSession = await this.sessionRepo.findOne({
+          where: { id: state.sessionId },
+          relations: { quiz: { questions: { answers: true } } },
+        });
+        if (activeSession) {
+          const questions = activeSession.quiz.questions.sort((a, b) => a.order - b.order);
+          const question = questions[state.currentQuestionIdx];
+          const elapsed = state.questionStartedAt ? Date.now() - state.questionStartedAt : 0;
+          socket.emit(SOCKET_EVENTS.QUESTION_START, {
+            questionId: question.id,
+            text: question.text,
+            type: question.type,
+            answers: question.answers.map((a) => ({ id: a.id, text: a.text })),
+            timeLimitMs: Math.max(1000, question.timeLimit * 1000 - elapsed),
+            maxPoints: question.maxPoints,
+            questionIndex: state.currentQuestionIdx,
+            totalQuestions: questions.length,
+          });
+        }
+      }
       return;
     }
 
@@ -120,7 +175,7 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.socketToSession.set(socket.id, session.code);
     state.participantScores.set(socket.id, 0);
 
-    const totalPlayers = session.participants.length + 1;
+    const totalPlayers = state.participantScores.size;
     this.server.to(session.code).emit(SOCKET_EVENTS.PLAYER_JOINED, {
       nickname: participant.nickname,
       totalPlayers,

@@ -9,6 +9,10 @@ export interface SessionJoinPayload {
   nickname: string;
 }
 
+export interface SessionHostJoinPayload {
+  code: string;
+}
+
 export interface SessionStartPayload {
   sessionId: string;
 }
@@ -85,6 +89,7 @@ export interface SocketErrorPayload {
 export const SOCKET_EVENTS = {
   // C → S
   SESSION_JOIN: 'session:join',
+  SESSION_HOST_JOIN: 'session:host_join',
   SESSION_START: 'session:start',
   SESSION_NEXT: 'session:next',
   ANSWER_SUBMIT: 'answer:submit',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getSocket } from '../../lib/socket';
 import { SOCKET_EVENTS } from '@quiz/shared';
 import type {
@@ -12,13 +12,15 @@ type Phase = 'question' | 'results' | 'leaderboard' | 'finished';
 export function SessionControlPage() {
   const { code: _code } = useParams<{ code: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const navState = location.state as { sessionId?: string; firstQuestion?: QuestionStartPayload } | null;
 
   const [phase, setPhase] = useState<Phase>('question');
-  const [question, setQuestion] = useState<QuestionStartPayload | null>(null);
-  const [remainingMs, setRemainingMs] = useState(0);
+  const [question, setQuestion] = useState<QuestionStartPayload | null>(navState?.firstQuestion ?? null);
+  const [remainingMs, setRemainingMs] = useState(navState?.firstQuestion?.timeLimitMs ?? 0);
   const [correctIds, setCorrectIds] = useState<string[]>([]);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
-  const [sessionId, setSessionId] = useState('');
+  const [sessionId] = useState(navState?.sessionId ?? '');
   const [answeredCount, setAnsweredCount] = useState(0);
 
   useEffect(() => {
@@ -64,11 +66,6 @@ export function SessionControlPage() {
       socket.off(SOCKET_EVENTS.SESSION_FINISHED);
       socket.off(SOCKET_EVENTS.ANSWER_RESULT);
     };
-  }, []);
-
-  useEffect(() => {
-    const raw = sessionStorage.getItem('session_id');
-    if (raw) setSessionId(raw);
   }, []);
 
   function sendNext() {
