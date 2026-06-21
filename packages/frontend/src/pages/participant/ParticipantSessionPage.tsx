@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSocket, joinSession, disconnectSocket } from '../../lib/socket';
 import { SOCKET_EVENTS, QuestionType } from '@quiz/shared';
@@ -9,6 +9,13 @@ import type {
 } from '@quiz/shared';
 
 type Phase = 'waiting' | 'question' | 'submitted' | 'result' | 'leaderboard' | 'finished' | 'error';
+
+function getAnswerFontClass(text: string): string {
+  if (text.length <= 10) return 'text-2xl font-bold';
+  if (text.length <= 20) return 'text-xl font-bold';
+  if (text.length <= 40) return 'text-base font-semibold';
+  return 'text-sm font-medium';
+}
 
 export function ParticipantSessionPage() {
   const { code } = useParams<{ code: string }>();
@@ -24,6 +31,10 @@ export function ParticipantSessionPage() {
   const [nickname, setNickname] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [totalPlayers, setTotalPlayers] = useState(0);
+
+  // Track answer result and question-end state across async socket events
+  const pendingResultRef = useRef<AnswerResultPayload | null>(null);
+  const questionEndedRef = useRef(false);
 
   useEffect(() => {
     const info = JSON.parse(sessionStorage.getItem('participant_info') ?? '{}');
@@ -41,6 +52,13 @@ export function ParticipantSessionPage() {
       }
     });
 
+    socket.on(SOCKET_EVENTS.PLAYER_KICKED, (data: { nickname: string; totalPlayers: number }) => {
+      setTotalPlayers(data.totalPlayers);
+      if (data.nickname.toLowerCase() === info.nickname.toLowerCase()) {
+        navigate('/');
+      }
+    });
+
     socket.on(SOCKET_EVENTS.QUESTION_START, (data: QuestionStartPayload) => {
       setQuestion(data);
       setSelected([]);
@@ -48,6 +66,8 @@ export function ParticipantSessionPage() {
       setCorrectIds([]);
       setRemainingMs(data.timeLimitMs);
       setPhase('question');
+      pendingResultRef.current = null;
+      questionEndedRef.current = false;
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_TICK, (data: QuestionTickPayload) => {
@@ -56,11 +76,19 @@ export function ParticipantSessionPage() {
 
     socket.on(SOCKET_EVENTS.QUESTION_END, (data: QuestionEndPayload) => {
       setCorrectIds(data.correctAnswerIds);
+      questionEndedRef.current = true;
+      if (pendingResultRef.current) {
+        setPhase('result');
+      }
     });
 
     socket.on(SOCKET_EVENTS.ANSWER_RESULT, (data: AnswerResultPayload) => {
       setResult(data);
-      setPhase('result');
+      pendingResultRef.current = data;
+      if (questionEndedRef.current) {
+        setPhase('result');
+      }
+      // else: stay in 'submitted' until QUESTION_END fires
     });
 
     socket.on(SOCKET_EVENTS.LEADERBOARD_UPDATE, (data: LeaderboardUpdatePayload) => {
@@ -80,6 +108,7 @@ export function ParticipantSessionPage() {
 
     return () => {
       socket.off(SOCKET_EVENTS.PLAYER_JOINED);
+      socket.off(SOCKET_EVENTS.PLAYER_KICKED);
       socket.off(SOCKET_EVENTS.QUESTION_START);
       socket.off(SOCKET_EVENTS.QUESTION_TICK);
       socket.off(SOCKET_EVENTS.QUESTION_END);
@@ -164,12 +193,14 @@ export function ParticipantSessionPage() {
                 key={a.id}
                 onClick={() => phase === 'question' && toggleAnswer(a.id)}
                 disabled={phase === 'submitted'}
-                className={`${ANSWER_COLORS[i % 4]} rounded-xl p-4 text-left font-medium transition-all ${
+                className={`${ANSWER_COLORS[i % 4]} rounded-xl p-4 flex items-center justify-center text-center transition-all ${
                   isSelected ? 'ring-4 ring-white' : phase === 'question' && selected.length > 0 ? 'opacity-40' : ''
                 } disabled:cursor-default`}
               >
-                {isSelected && <span className="mr-2">✓</span>}
-                {a.text}
+                <span className={getAnswerFontClass(a.text)}>
+                  {isSelected && <span className="mr-1">✓</span>}
+                  {a.text}
+                </span>
               </button>
             );
           })}
@@ -184,10 +215,8 @@ export function ParticipantSessionPage() {
           </button>
         )}
 
-        {/* SINGLE auto-submits via useEffect below */}
-
         {phase === 'submitted' && (
-          <p className="text-center text-gray-400">Answer submitted — waiting for others…</p>
+          <p className="text-center text-gray-400">Answer submitted — waiting for question to close…</p>
         )}
       </div>
     </div>
@@ -195,7 +224,7 @@ export function ParticipantSessionPage() {
 
   if (phase === 'result') return (
     <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center gap-6 p-6">
-      <div className={`text-6xl ${result?.correct ? '🎉' : '😢'}`}>
+      <div className="text-6xl">
         {result?.correct ? '🎉' : '😢'}
       </div>
       <h2 className="text-3xl font-bold">{result?.correct ? 'Correct!' : 'Incorrect'}</h2>
