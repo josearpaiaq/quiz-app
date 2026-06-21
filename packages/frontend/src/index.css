@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-  themes: lemonade --default;
+  themes: lemonade --default, light, dark, cupcake, dracula, synthwave, retro, cyberpunk, forest, aqua;
 }
 
 button:not(:disabled),
