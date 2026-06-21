@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  ManyToOne, JoinColumn,
+  ManyToOne, JoinColumn, CreateDateColumn,
 } from 'typeorm';
 import { QuestionEntity } from './question.entity';
 
@@ -21,4 +21,7 @@ export class AnswerEntity {
 
   @Column({ name: 'is_correct', default: false })
   isCorrect: boolean;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 }
