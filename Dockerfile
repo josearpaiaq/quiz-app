@@ -20,7 +20,18 @@ RUN pnpm --filter @quiz/backend build
 
 FROM node:24-alpine
 WORKDIR /app
+
+# Copy package files for production install
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc ./
+COPY packages/shared/package.json  ./packages/shared/
+COPY packages/backend/package.json ./packages/backend/
+
+# Install production dependencies only
+RUN npm i -g pnpm@11 && pnpm install --prod --frozen-lockfile
+
+# Copy built application
 COPY --from=builder /app/packages/backend/dist ./dist
-COPY --from=builder /app/node_modules          ./node_modules
+
 EXPOSE 3000
 CMD ["node", "dist/main.js"]
+
