@@ -7,7 +7,7 @@ A Kahoot-style real-time multiplayer quiz application. Hosts create and manage q
 | Layer | Technology | Hosting |
 |---|---|---|
 | Frontend | React + Vite | Vercel |
-| Backend | NestJS + Socket.IO | Fly.io |
+| Backend | NestJS + Socket.IO | Railway |
 | Database | PostgreSQL | Neon (serverless) |
 | ORM | TypeORM | — |
 | Monorepo | pnpm workspaces | — |
@@ -20,8 +20,10 @@ multiplayer-quiz-app/
 │   ├── shared/       # TypeScript types, DTOs, enums shared between FE and BE
 │   ├── backend/      # NestJS application
 │   └── frontend/     # React + Vite application
-├── pnpm-workspace.yaml
-└── package.json
+├── Dockerfile
+├── railway.toml
+├── vercel.json
+└── pnpm-workspace.yaml
 ```
 
 ## Local Development
@@ -52,20 +54,14 @@ VITE_API_URL=http://localhost:3000
 
 ## Monorepo & Shared Package
 
-`packages/shared` exports TypeScript source directly — no separate compile step:
-
-```json
-{ "name": "@quiz/shared", "main": "./src/index.ts", "types": "./src/index.ts" }
-```
-
-Both Vite and `tsc` transpile TS natively, so they consume `shared` inline without a pre-build. When `pnpm install` runs from the root, pnpm creates symlinks so each package can resolve `@quiz/shared`:
+`packages/shared` is compiled to `dist/` before consumers build. When `pnpm install` runs from the root, pnpm creates symlinks so each package can resolve `@quiz/shared`:
 
 ```
 packages/backend/node_modules/@quiz/shared  →  ../../shared
 packages/frontend/node_modules/@quiz/shared →  ../../shared
 ```
 
-This means **`pnpm install` must always run from the repo root** — in local dev, CI, and both deployment platforms.
+**`pnpm install` must always run from the repo root** — in local dev, CI, and both deployment platforms.
 
 ## Deployment
 
@@ -76,80 +72,30 @@ Do **not** set the Vercel project root to `packages/frontend` — that would cut
 | Setting | Value |
 |---|---|
 | Install command | `pnpm install --frozen-lockfile` |
-| Build command | `pnpm --filter @quiz/frontend build` |
+| Build command | `pnpm --filter @quiz/shared build && pnpm --filter @quiz/frontend build` |
 | Output directory | `packages/frontend/dist` |
 
-Add environment variable `VITE_API_URL` pointing to the Fly.io backend URL.
+Add environment variable `VITE_API_URL` pointing to the Railway backend URL.
 
-### Fly.io (backend)
+### Railway (backend)
 
-The Dockerfile copies the full monorepo structure so pnpm can link `packages/shared` before building:
+Railway detects the `Dockerfile` at the root automatically via `railway.toml`.
 
-```dockerfile
-FROM node:20-alpine AS builder
-RUN npm i -g pnpm
-WORKDIR /app
+**Setup:**
+1. New Project → Deploy from GitHub repo → select this repo
+2. Add environment variables in the Railway dashboard:
 
-# Workspace manifests first (maximizes Docker layer cache)
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
-COPY packages/shared/package.json  ./packages/shared/
-COPY packages/backend/package.json ./packages/backend/
-
-RUN pnpm install --frozen-lockfile
-
-# Source
-COPY packages/shared  ./packages/shared
-COPY packages/backend ./packages/backend
-
-RUN pnpm --filter @quiz/backend build
-
-FROM node:20-alpine
-WORKDIR /app
-COPY --from=builder /app/packages/backend/dist ./dist
-COPY --from=builder /app/node_modules          ./node_modules
-CMD ["node", "dist/main.js"]
+```
+DATABASE_URL          = postgresql://...
+JWT_SECRET            = ...
+JWT_REFRESH_SECRET    = ...
+FRONTEND_ORIGIN       = https://your-app.vercel.app
 ```
 
-Add the required secrets via `fly secrets set DATABASE_URL=... JWT_SECRET=... JWT_REFRESH_SECRET=... FRONTEND_ORIGIN=...`.
+Railway injects `PORT` automatically — the app reads it via `process.env.PORT`.
 
-# Instalar CLI de Fly.io si no lo tienes
-brew install flyctl
-
-# Login
-fly auth login
-
-# Lanzar la app (desde la raíz del monorepo, ya tienes fly.toml)
-fly launch --no-deploy
-
-2. Configurar secrets (variables de entorno)
-
-fly secrets set \
-  DATABASE_URL="postgresql://..." \
-  JWT_SECRET="..." \
-  JWT_REFRESH_SECRET="..." \
-  FRONTEND_ORIGIN="https://tu-app.vercel.app"
-
-3. Deploy (el comando de siempre)
-
-# Desde la raíz del monorepo
-fly deploy
-
-Fly detecta el Dockerfile automáticamente, construye la imagen y la despliega.
-
----
-Comandos útiles post-deploy
-
-fly status          # estado de las máquinas
-fly logs            # logs en tiempo real
-fly ssh console     # SSH al contenedor
-fly secrets list    # ver qué secrets están configurados (sin valores)
-
----
-Notas importantes:
-- El fly.toml ya tiene app = "quiz-app-backend" configurado, así que no necesitas especificar la app cada vez.
-- Siempre ejecuta desde la raíz del monorepo — el Dockerfile necesita acceso a packages/shared.
-- El frontend en Vercel se despliega automáticamente al hacer push a main (si está conectado al repo).
+Every push to `main` triggers an automatic redeploy.
 
 ### Neon (database)
 
-Create a project on [neon.tech](https://neon.tech), copy the connection string, and use it as `DATABASE_URL`. TypeORM runs migrations on startup (`synchronize: true` in dev, explicit migrations in production).
+Create a project on [neon.tech](https://neon.tech), copy the connection string, and use it as `DATABASE_URL`. TypeORM synchronizes the schema on startup.
