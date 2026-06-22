@@ -14,6 +14,7 @@ RUN pnpm install --frozen-lockfile
 COPY packages/shared  ./packages/shared
 COPY packages/backend ./packages/backend
 
+RUN pnpm --filter @quiz/shared build
 RUN pnpm --filter @quiz/backend build
 
 FROM node:24-alpine
