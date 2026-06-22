@@ -53,6 +53,11 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleConnection() {}
 
   handleDisconnect(socket: Socket) {
+    const sessionCode = this.socketToSession.get(socket.id);
+    if (sessionCode) {
+      const state = this.sessions.get(sessionCode);
+      state?.participantScores.delete(socket.id);
+    }
     this.socketToSession.delete(socket.id);
     this.socketToParticipant.delete(socket.id);
   }

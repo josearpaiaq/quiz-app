@@ -112,6 +112,44 @@ CMD ["node", "dist/main.js"]
 
 Add the required secrets via `fly secrets set DATABASE_URL=... JWT_SECRET=... JWT_REFRESH_SECRET=... FRONTEND_ORIGIN=...`.
 
+# Instalar CLI de Fly.io si no lo tienes
+brew install flyctl
+
+# Login
+fly auth login
+
+# Lanzar la app (desde la raíz del monorepo, ya tienes fly.toml)
+fly launch --no-deploy
+
+2. Configurar secrets (variables de entorno)
+
+fly secrets set \
+  DATABASE_URL="postgresql://..." \
+  JWT_SECRET="..." \
+  JWT_REFRESH_SECRET="..." \
+  FRONTEND_ORIGIN="https://tu-app.vercel.app"
+
+3. Deploy (el comando de siempre)
+
+# Desde la raíz del monorepo
+fly deploy
+
+Fly detecta el Dockerfile automáticamente, construye la imagen y la despliega.
+
+---
+Comandos útiles post-deploy
+
+fly status          # estado de las máquinas
+fly logs            # logs en tiempo real
+fly ssh console     # SSH al contenedor
+fly secrets list    # ver qué secrets están configurados (sin valores)
+
+---
+Notas importantes:
+- El fly.toml ya tiene app = "quiz-app-backend" configurado, así que no necesitas especificar la app cada vez.
+- Siempre ejecuta desde la raíz del monorepo — el Dockerfile necesita acceso a packages/shared.
+- El frontend en Vercel se despliega automáticamente al hacer push a main (si está conectado al repo).
+
 ### Neon (database)
 
 Create a project on [neon.tech](https://neon.tech), copy the connection string, and use it as `DATABASE_URL`. TypeORM runs migrations on startup (`synchronize: true` in dev, explicit migrations in production).

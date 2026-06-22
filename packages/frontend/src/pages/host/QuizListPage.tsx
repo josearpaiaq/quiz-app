@@ -158,7 +158,7 @@ export function QuizListPage() {
       {importOpen && (
         <div
           className="modal modal-open"
-          onClick={(e) => { if (e.target === e.currentTarget) closeImport(); }}
+          onClick={(e) => { if (e.target === e.currentTarget && !importMutation.isPending) closeImport(); }}
         >
           <div className="modal-box">
             <h2 className="text-xl font-bold mb-3">Import Quiz</h2>
@@ -191,6 +191,7 @@ export function QuizListPage() {
                   type="file"
                   accept=".csv,.xlsx"
                   onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+                  disabled={importMutation.isPending}
                   className="file-input file-input-bordered w-full"
                 />
               </div>
@@ -205,7 +206,7 @@ export function QuizListPage() {
             )}
 
             <div className="modal-action">
-              <button onClick={closeImport} className="btn btn-ghost">
+              <button onClick={closeImport} disabled={importMutation.isPending} className="btn btn-ghost">
                 Cancel
               </button>
               <button

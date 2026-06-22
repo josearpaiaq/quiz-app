@@ -7,6 +7,7 @@ import { SessionLobbyPage } from './pages/host/SessionLobbyPage';
 import { SessionControlPage } from './pages/host/SessionControlPage';
 import { JoinPage } from './pages/participant/JoinPage';
 import { ParticipantSessionPage } from './pages/participant/ParticipantSessionPage';
+import { ThemePicker } from './components/ThemePicker';
 
 const queryClient = new QueryClient();
 
@@ -19,6 +20,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
+        <ThemePicker />
         <Routes>
           {/* Host */}
           <Route path="/host/login" element={<LoginPage />} />

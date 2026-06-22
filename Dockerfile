@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 RUN npm i -g pnpm@11
 
 WORKDIR /app
@@ -16,7 +16,7 @@ COPY packages/backend ./packages/backend
 
 RUN pnpm --filter @quiz/backend build
 
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 COPY --from=builder /app/packages/backend/dist ./dist
 COPY --from=builder /app/node_modules          ./node_modules
