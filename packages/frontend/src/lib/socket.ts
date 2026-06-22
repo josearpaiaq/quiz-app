@@ -12,7 +12,7 @@ export function getSocket(token?: string): Socket {
   // but not yet "connected", causing listeners and emits to land on different objects.
   if (socket) return socket;
 
-  socket = io('/', {
+  socket = io(import.meta.env.VITE_API_URL ?? '/', {
     path: '/socket.io',
     transports: ['websocket', 'polling'],
     auth: token ? { token } : undefined,
