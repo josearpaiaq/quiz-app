@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm --filter @quiz/frontend build",
+  "buildCommand": "pnpm --filter @quiz/shared build && pnpm --filter @quiz/frontend build",
   "outputDirectory": "packages/frontend/dist",
   "installCommand": "pnpm install --frozen-lockfile",
   "framework": null
