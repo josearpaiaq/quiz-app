@@ -11,6 +11,7 @@ COPY packages/backend/package.json ./packages/backend/
 RUN pnpm install --frozen-lockfile
 
 # Source
+COPY tsconfig.base.json ./
 COPY packages/shared  ./packages/shared
 COPY packages/backend ./packages/backend
 
