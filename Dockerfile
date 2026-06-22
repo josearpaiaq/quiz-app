@@ -19,7 +19,7 @@ RUN pnpm --filter @quiz/shared build
 RUN pnpm --filter @quiz/backend build
 
 # Produce a standalone deployment with a flat, complete node_modules
-RUN pnpm --filter @quiz/backend deploy --prod /deploy
+RUN pnpm --filter @quiz/backend deploy --prod --legacy /deploy
 
 FROM node:24-alpine
 WORKDIR /app
