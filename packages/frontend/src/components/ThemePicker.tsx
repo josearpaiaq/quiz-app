@@ -38,7 +38,7 @@ export function ThemePicker() {
             <button
               key={t}
               onClick={() => { setTheme(t); setOpen(false); }}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-base-200 ${
+              className={`flex flex-col items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium transition-colors hover:bg-base-200 ${
                 theme === t ? 'ring-2 ring-primary' : ''
               }`}
             >
