@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { Copy, Check } from 'lucide-react';
 import { api } from '../../lib/api';
 import { getSocket } from '../../lib/socket';
 import { SOCKET_EVENTS } from '@quiz/shared';
@@ -15,6 +16,15 @@ export function SessionLobbyPage() {
   const navigate = useNavigate();
   const [players, setPlayers] = useState<Player[]>([]);
   const [sessionId, setSessionId] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  function copyJoinLink() {
+    const url = `${window.location.origin}/?code=${code}`;
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   const { data: session } = useQuery({
     queryKey: ['session', code],
@@ -77,7 +87,14 @@ export function SessionLobbyPage() {
   return (
     <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-6">
       <p className="text-base-content/60 mb-2 uppercase tracking-widest text-sm">Room code</p>
-      <h1 className="text-8xl font-mono font-bold tracking-widest text-primary mb-12">{code}</h1>
+      <h1 className="text-8xl font-mono font-bold tracking-widest text-primary mb-4">{code}</h1>
+      <button
+        onClick={copyJoinLink}
+        className={`btn btn-sm gap-2 mb-10 transition-all ${copied ? 'btn-success' : 'btn-ghost'}`}
+      >
+        {copied ? <Check size={15} /> : <Copy size={15} />}
+        {copied ? 'Link copied!' : 'Copy join link'}
+      </button>
 
       <div className="w-full max-w-lg">
         <p className="text-base-content/60 text-sm mb-4">
