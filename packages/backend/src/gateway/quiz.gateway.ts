@@ -98,7 +98,7 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage(SOCKET_EVENTS.SESSION_JOIN)
   async handleJoin(
     @ConnectedSocket() socket: Socket,
-    @MessageBody() data: { code: string; firstName: string; lastName: string; nickname: string },
+    @MessageBody() data: { code: string; nickname: string },
   ) {
     const session = await this.sessionRepo.findOne({
       where: { code: data.code.toUpperCase() },
@@ -138,8 +138,6 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const totalPlayers = state.participantScores.size;
       this.server.to(session.code).emit(SOCKET_EVENTS.PLAYER_JOINED, {
         nickname: existing.nickname,
-        firstName: existing.firstName,
-        lastName: existing.lastName,
         totalPlayers,
         rejoined: true,
         score: existing.score,
@@ -172,8 +170,6 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const participant = this.participantRepo.create({
       sessionId: session.id,
-      firstName: data.firstName,
-      lastName: data.lastName,
       nickname: data.nickname,
     });
     await this.participantRepo.save(participant);
@@ -185,8 +181,6 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const totalPlayers = state.participantScores.size;
     this.server.to(session.code).emit(SOCKET_EVENTS.PLAYER_JOINED, {
       nickname: participant.nickname,
-      firstName: participant.firstName,
-      lastName: participant.lastName,
       totalPlayers,
     });
   }

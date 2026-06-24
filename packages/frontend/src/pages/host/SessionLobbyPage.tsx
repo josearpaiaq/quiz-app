@@ -8,8 +8,6 @@ import type { PlayerJoinedPayload, PlayerKickedPayload } from '@quiz/shared';
 
 interface Player {
   nickname: string;
-  firstName: string;
-  lastName: string;
 }
 
 export function SessionLobbyPage() {
@@ -28,11 +26,7 @@ export function SessionLobbyPage() {
     if (session) {
       setSessionId(session.id);
       setPlayers(
-        session.participants?.map((p: any) => ({
-          nickname: p.nickname,
-          firstName: p.firstName,
-          lastName: p.lastName,
-        })) ?? [],
+        session.participants?.map((p: any) => ({ nickname: p.nickname })) ?? [],
       );
     }
   }, [session]);
@@ -47,7 +41,7 @@ export function SessionLobbyPage() {
     const onJoined = (data: PlayerJoinedPayload) => {
       setPlayers((prev) => {
         if (prev.some((p) => p.nickname === data.nickname)) return prev;
-        return [...prev, { nickname: data.nickname, firstName: data.firstName, lastName: data.lastName }];
+        return [...prev, { nickname: data.nickname }];
       });
     };
 
@@ -96,9 +90,6 @@ export function SessionLobbyPage() {
               className="relative bg-base-100 shadow px-5 py-2 rounded-full flex flex-col items-center justify-center min-w-[110px]"
             >
               <span className="font-bold text-base leading-tight text-center">{p.nickname}</span>
-              <span className="text-xs text-base-content/50 leading-tight text-center">
-                ({p.firstName} {p.lastName})
-              </span>
               <button
                 onClick={() => kickPlayer(p.nickname)}
                 title="Remove player"

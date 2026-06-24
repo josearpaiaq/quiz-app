@@ -17,10 +17,10 @@ export class ParticipantEntity {
   @JoinColumn({ name: 'session_id' })
   session: SessionEntity;
 
-  @Column({ name: 'first_name' })
+  @Column({ name: 'first_name', nullable: true, type: 'varchar' })
   firstName: string;
 
-  @Column({ name: 'last_name' })
+  @Column({ name: 'last_name', nullable: true, type: 'varchar' })
   lastName: string;
 
   @Column()

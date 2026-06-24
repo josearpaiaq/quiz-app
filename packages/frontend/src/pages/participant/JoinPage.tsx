@@ -1,20 +1,24 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 
 export function JoinPage() {
   const navigate = useNavigate();
-  const [code, setCode] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [nickname, setNickname] = useState('');
+  const [searchParams] = useSearchParams();
+
+  const savedNickname = JSON.parse(sessionStorage.getItem('participant_info') ?? '{}').nickname ?? '';
+
+  const [code, setCode] = useState(() => searchParams.get('code')?.toUpperCase() ?? '');
+  const [nickname, setNickname] = useState(savedNickname);
+  const [editingNickname, setEditingNickname] = useState(!savedNickname);
   const [error, setError] = useState('');
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     if (code.trim().length !== 6) { setError('Room code must be 6 characters'); return; }
+    if (!nickname.trim()) { setError('Nickname is required'); return; }
 
-    sessionStorage.setItem('participant_info', JSON.stringify({ firstName, lastName, nickname }));
+    sessionStorage.setItem('participant_info', JSON.stringify({ nickname: nickname.trim() }));
     navigate(`/session/${code.toUpperCase()}`);
   }
 
@@ -36,27 +40,31 @@ export function JoinPage() {
               required
               className="input input-bordered w-full text-center text-2xl font-mono tracking-widest uppercase"
             />
-            <input
-              placeholder="First Name"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              required
-              className="input input-bordered w-full"
-            />
-            <input
-              placeholder="Last Name"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              required
-              className="input input-bordered w-full"
-            />
-            <input
-              placeholder="Nickname (shown in game)"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              required
-              className="input input-bordered w-full"
-            />
+
+            {editingNickname ? (
+              <input
+                placeholder="Nickname (shown in game)"
+                value={nickname}
+                onChange={(e) => setNickname(e.target.value)}
+                required
+                autoFocus={!!savedNickname}
+                className="input input-bordered w-full"
+              />
+            ) : (
+              <div className="flex items-center justify-between px-1">
+                <span className="text-base-content/80 text-sm">
+                  Playing as <span className="font-semibold">{nickname}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setEditingNickname(true)}
+                  className="text-xs text-base-content/40 hover:text-base-content/70 underline underline-offset-2"
+                >
+                  change?
+                </button>
+              </div>
+            )}
+
             {error && <p className="text-error text-sm">{error}</p>}
             <button type="submit" className="btn btn-primary w-full text-lg mt-1">
               Join →
