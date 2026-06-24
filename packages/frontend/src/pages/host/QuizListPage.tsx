@@ -95,7 +95,7 @@ export function QuizListPage() {
             >
               + New Quiz
             </button>
-            <button onClick={logout} className="btn btn-ghost btn-sm">
+            <button onClick={async () => { await logout(); navigate('/login'); }} className="btn btn-ghost btn-sm">
               Sign out
             </button>
           </div>
