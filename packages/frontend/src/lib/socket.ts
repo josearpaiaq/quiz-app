@@ -31,7 +31,7 @@ export function getSocket(token?: string): Socket {
 
 export function joinSession(
   code: string,
-  info: { firstName: string; lastName: string; nickname: string },
+  info: { nickname: string },
 ): void {
   // Prevent double-emit (React StrictMode runs effects twice in dev)
   if (joinedCodes.has(code)) return;

@@ -4,8 +4,6 @@ import { QuestionType } from './enums';
 
 export interface SessionJoinPayload {
   code: string;
-  firstName: string;
-  lastName: string;
   nickname: string;
 }
 
@@ -34,8 +32,6 @@ export interface KickParticipantPayload {
 
 export interface PlayerJoinedPayload {
   nickname: string;
-  firstName: string;
-  lastName: string;
   totalPlayers: number;
   rejoined?: boolean;
   score?: number;

@@ -48,8 +48,6 @@ export interface SessionEntity {
 export interface ParticipantEntity {
   id: string;
   sessionId: string;
-  firstName: string;
-  lastName: string;
   nickname: string;
   score: number;
   joinedAt: Date;
