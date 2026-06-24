@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { getSocket, joinSession, disconnectSocket } from '../../lib/socket';
@@ -33,6 +33,9 @@ export function ParticipantSessionPage() {
   const [nickname, setNickname] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [totalPlayers, setTotalPlayers] = useState(0);
+  const [submitCountdown, setSubmitCountdown] = useState(0);
+  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const info = JSON.parse(sessionStorage.getItem('participant_info') ?? '{}');
@@ -60,6 +63,9 @@ export function ParticipantSessionPage() {
       setResult(null);
       setRemainingMs(data.timeLimitMs);
       setPhase('question');
+      setSubmitCountdown(0);
+      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_TICK, (data: QuestionTickPayload) => {
@@ -102,25 +108,48 @@ export function ParticipantSessionPage() {
     };
   }, [code, navigate]);
 
+  function submitAnswer(answersToSubmit?: string[]) {
+    const answers = answersToSubmit ?? selected;
+    if (!question || answers.length === 0) return;
+    if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setSubmitCountdown(0);
+    const socket = getSocket();
+    socket.emit(SOCKET_EVENTS.ANSWER_SUBMIT, {
+      questionId: question.questionId,
+      answerIds: answers,
+    });
+    setPhase('submitted');
+  }
+
   function toggleAnswer(id: string) {
     if (!question) return;
     if (question.type === QuestionType.SINGLE) {
       setSelected([id]);
-    } else {
-      setSelected((prev) =>
-        prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-      );
+      return;
     }
-  }
-
-  function submitAnswer() {
-    if (!question || selected.length === 0) return;
-    const socket = getSocket();
-    socket.emit(SOCKET_EVENTS.ANSWER_SUBMIT, {
-      questionId: question.questionId,
-      answerIds: selected,
+    setSelected((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      if (next.length === 0) {
+        if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        setSubmitCountdown(0);
+        return next;
+      }
+      const DELAY = 2000;
+      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      setSubmitCountdown(DELAY);
+      countdownIntervalRef.current = setInterval(() => {
+        setSubmitCountdown((c) => Math.max(0, c - 100));
+      }, 100);
+      submitTimerRef.current = setTimeout(() => {
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+        setSubmitCountdown(0);
+        submitAnswer(next);
+      }, DELAY);
+      return next;
     });
-    setPhase('submitted');
   }
 
   useEffect(() => {
@@ -172,7 +201,14 @@ export function ParticipantSessionPage() {
           <span className="font-mono text-white text-lg">{Math.ceil(remainingMs / 1000)}s</span>
         </div>
 
-        <h2 className="text-xl font-bold text-center">{question?.text}</h2>
+        <div className="flex flex-col items-center justify-between text-sm text-gray-400">
+          <h2 className="text-xl font-bold text-center">{question?.text}</h2>
+          {question?.type === QuestionType.MULTIPLE && (
+            <span className="text-xs text-gray-400 text-center">
+              Multiple choice. Select all that apply.
+            </span>
+          )}
+        </div>
 
         <div className="grid grid-cols-2 gap-3 flex-1">
           {question?.answers.map((a, i) => {
@@ -187,7 +223,6 @@ export function ParticipantSessionPage() {
                 } disabled:cursor-default`}
               >
                 <span className={getAnswerFontClass(a.text)}>
-                  {isSelected && <span className="mr-1">✓</span>}
                   {a.text}
                 </span>
               </button>
@@ -196,9 +231,17 @@ export function ParticipantSessionPage() {
         </div>
 
         {question?.type === QuestionType.MULTIPLE && phase === 'question' && selected.length > 0 && (
-          <button onClick={submitAnswer} className="btn btn-neutral w-full text-lg">
-            Confirm ({selected.length} selected)
-          </button>
+          <div className="w-full">
+            <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-400 transition-none"
+                style={{ width: `${(submitCountdown / 2000) * 100}%` }}
+              />
+            </div>
+            <p className="text-center text-gray-400 text-xs mt-1">
+              Submitting in {(submitCountdown / 1000).toFixed(1)}s…
+            </p>
+          </div>
         )}
 
         {phase === 'submitted' && (
