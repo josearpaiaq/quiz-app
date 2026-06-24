@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { QuizEntity } from '@quiz/shared';
+import { Plus, LogOut } from 'lucide-react';
 
 const TEMPLATE_CSV = [
   'question,type,time_limit,max_points,answer1,answer1_correct,answer2,answer2_correct,answer3,answer3_correct,answer4,answer4_correct',
@@ -80,23 +81,54 @@ export function QuizListPage() {
   return (
     <div className="min-h-screen bg-base-200 p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">My Quizzes</h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setImportOpen(true)}
-              className="btn btn-ghost btn-sm"
+        <div className="flex items-center justify-between mb-8 gap-2">
+          <h1 className="text-xl md:text-3xl font-bold">My Quizzes</h1>
+          <div>
+            {/* Desktop */}
+            <div className="hidden sm:flex gap-2">
+              <button
+                onClick={() => setImportOpen(true)}
+                className="btn btn-ghost btn-sm"
+              >
+                Import CSV / Excel
+              </button>
+              <button
+                onClick={() => createMutation.mutate()}
+                className="btn btn-primary btn-sm"
+              >
+                + New Quiz
+              </button>
+              <button onClick={async () => { await logout(); navigate('/login'); }} className="btn btn-ghost btn-sm">
+                Sign out <LogOut />
+              </button>
+            </div>
+            
+            {/* Mobile dropdown */}
+            <div className="dropdown dropdown-end sm:hidden">
+              <div tabIndex={0} role="button" className="btn btn-ghost btn-sm text-lg">
+                <Plus />
+              </div>
+              <ul
+                tabIndex={0}
+                className="dropdown-content menu bg-base-100 rounded-box z-10 w-48 p-2 shadow"
+              >
+                <li>
+                  <button onClick={() => createMutation.mutate()} className="font-semibold">
+                    + New Quiz
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => setImportOpen(true)}>
+                    Import CSV / Excel
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <button 
+              onClick={async () => { await logout(); navigate('/login'); }}
+              className="btn btn-ghost btn-sm sm:hidden"
             >
-              Import CSV / Excel
-            </button>
-            <button
-              onClick={() => createMutation.mutate()}
-              className="btn btn-primary btn-sm"
-            >
-              + New Quiz
-            </button>
-            <button onClick={async () => { await logout(); navigate('/login'); }} className="btn btn-ghost btn-sm">
-              Sign out
+              <LogOut />
             </button>
           </div>
         </div>
