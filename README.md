@@ -79,6 +79,30 @@ Add environment variable `VITE_API_URL` pointing to the Railway backend URL.
 
 ### Railway (backend)
 
+1. Instalar y autenticar
+
+brew install railway
+railway login
+
+2. Vincular el proyecto
+
+# Desde la raíz del monorepo
+railway link
+Te muestra los proyectos existentes de tu cuenta para seleccionar el que ya creaste.
+
+3. Deploy
+
+railway up
+
+Railway detecta el Dockerfile en la raíz y lo usa. Es equivalente a un push — construye la imagen y la despliega.
+
+---
+Comandos útiles post-deploy:
+railway logs          # logs en tiempo real
+railway status        # estado del servicio
+railway variables     # ver variables de entorno configuradas
+railway open          # abre el dashboard del proyecto en el browser
+
 Railway detects the `Dockerfile` at the root automatically via `railway.toml`.
 
 **Setup:**
