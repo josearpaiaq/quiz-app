@@ -25,5 +25,5 @@ FROM node:24-alpine
 WORKDIR /app
 COPY --from=builder /deploy/node_modules ./node_modules
 COPY --from=builder /app/packages/backend/dist ./dist
-EXPOSE 3000
+EXPOSE 8080
 CMD ["node", "dist/main.js"]
