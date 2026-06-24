@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_URL ?? '';
+const BASE = import.meta.env.VITE_API_URL ?? '/api';
 
 async function parseError(res: Response): Promise<string> {
   const text = await res.text();
