@@ -87,7 +87,7 @@ export function SessionLobbyPage() {
   return (
     <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-6">
       <p className="text-base-content/60 mb-2 uppercase tracking-widest text-sm">Room code</p>
-      <h1 className="text-8xl font-mono font-bold tracking-widest text-primary mb-4">{code}</h1>
+      <h1 className="text-6xl sm:text-8xl font-mono font-bold tracking-widest text-primary mb-4">{code}</h1>
       <button
         onClick={copyJoinLink}
         className={`btn btn-sm gap-2 mb-10 transition-all ${copied ? 'btn-success' : 'btn-ghost'}`}
