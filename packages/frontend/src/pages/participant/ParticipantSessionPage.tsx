@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { getSocket, joinSession, disconnectSocket } from '../../lib/socket';
@@ -9,7 +9,7 @@ import type {
   RankingEntry,
 } from '@quiz/shared';
 
-type Phase = 'waiting' | 'question' | 'submitted' | 'leaderboard' | 'finished' | 'error';
+type Phase = 'waiting' | 'question' | 'leaderboard' | 'finished' | 'error';
 
 function getAnswerFontClass(text: string): string {
   if (text.length <= 10) return 'text-2xl font-bold';
@@ -33,9 +33,6 @@ export function ParticipantSessionPage() {
   const [nickname, setNickname] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [totalPlayers, setTotalPlayers] = useState(0);
-  const [submitCountdown, setSubmitCountdown] = useState(0);
-  const submitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     const info = JSON.parse(sessionStorage.getItem('participant_info') ?? '{}');
@@ -63,9 +60,6 @@ export function ParticipantSessionPage() {
       setResult(null);
       setRemainingMs(data.timeLimitMs);
       setPhase('question');
-      setSubmitCountdown(0);
-      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     });
 
     socket.on(SOCKET_EVENTS.QUESTION_TICK, (data: QuestionTickPayload) => {
@@ -108,55 +102,27 @@ export function ParticipantSessionPage() {
     };
   }, [code, navigate]);
 
-  function submitAnswer(answersToSubmit?: string[]) {
-    const answers = answersToSubmit ?? selected;
-    if (!question || answers.length === 0) return;
-    if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
-    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-    setSubmitCountdown(0);
-    const socket = getSocket();
-    socket.emit(SOCKET_EVENTS.ANSWER_SUBMIT, {
-      questionId: question.questionId,
-      answerIds: answers,
-    });
-    setPhase('submitted');
-  }
-
   function toggleAnswer(id: string) {
-    if (!question) return;
+    if (!question || phase !== 'question') return;
     if (question.type === QuestionType.SINGLE) {
       setSelected([id]);
+      getSocket().emit(SOCKET_EVENTS.ANSWER_SUBMIT, {
+        questionId: question.questionId,
+        answerIds: [id],
+      });
       return;
     }
     setSelected((prev) => {
       const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
-      if (next.length === 0) {
-        if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        setSubmitCountdown(0);
-        return next;
+      if (next.length > 0) {
+        getSocket().emit(SOCKET_EVENTS.ANSWER_SUBMIT, {
+          questionId: question.questionId,
+          answerIds: next,
+        });
       }
-      const DELAY = 2000;
-      if (submitTimerRef.current) clearTimeout(submitTimerRef.current);
-      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-      setSubmitCountdown(DELAY);
-      countdownIntervalRef.current = setInterval(() => {
-        setSubmitCountdown((c) => Math.max(0, c - 100));
-      }, 100);
-      submitTimerRef.current = setTimeout(() => {
-        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
-        setSubmitCountdown(0);
-        submitAnswer(next);
-      }, DELAY);
       return next;
     });
   }
-
-  useEffect(() => {
-    if (question?.type === QuestionType.SINGLE && selected.length === 1 && phase === 'question') {
-      submitAnswer();
-    }
-  }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Waiting ──────────────────────────────────────────────────────────────
   if (phase === 'waiting') return (
@@ -186,7 +152,7 @@ export function ParticipantSessionPage() {
   );
 
   // ─── Active question (intentionally dark — game UX) ───────────────────────
-  if (phase === 'question' || phase === 'submitted') return (
+  if (phase === 'question') return (
     <div className="min-h-screen bg-gray-900 text-white flex flex-col">
       <div className="h-2 bg-gray-700">
         <div
@@ -216,11 +182,10 @@ export function ParticipantSessionPage() {
             return (
               <button
                 key={a.id}
-                onClick={() => phase === 'question' && toggleAnswer(a.id)}
-                disabled={phase === 'submitted'}
+                onClick={() => toggleAnswer(a.id)}
                 className={`${ANSWER_COLORS[i % 4]} rounded-xl p-4 flex items-center justify-center text-center transition-all ${
-                  isSelected ? 'ring-4 ring-white' : phase === 'question' && selected.length > 0 ? 'opacity-40' : ''
-                } disabled:cursor-default`}
+                  isSelected ? 'ring-4 ring-white' : selected.length > 0 ? 'opacity-40' : ''
+                }`}
               >
                 <span className={getAnswerFontClass(a.text)}>
                   {a.text}
@@ -230,22 +195,8 @@ export function ParticipantSessionPage() {
           })}
         </div>
 
-        {question?.type === QuestionType.MULTIPLE && phase === 'question' && selected.length > 0 && (
-          <div className="w-full">
-            <div className="h-1 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-indigo-400 transition-none"
-                style={{ width: `${(submitCountdown / 2000) * 100}%` }}
-              />
-            </div>
-            <p className="text-center text-gray-400 text-xs mt-1">
-              Submitting in {(submitCountdown / 1000).toFixed(1)}s…
-            </p>
-          </div>
-        )}
-
-        {phase === 'submitted' && (
-          <p className="text-center text-gray-400 text-sm">Answer submitted — waiting for results…</p>
+        {selected.length > 0 && (
+          <p className="text-center text-gray-400 text-sm">Tap to change your answer</p>
         )}
       </div>
     </div>
