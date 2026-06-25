@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Copy, Check } from 'lucide-react';
+import QRCode from 'react-qr-code';
 import { api } from '../../lib/api';
 import { getSocket } from '../../lib/socket';
 import { SOCKET_EVENTS } from '@quiz/shared';
@@ -87,7 +88,12 @@ export function SessionLobbyPage() {
   return (
     <div className="min-h-screen bg-base-200 flex flex-col items-center justify-center p-6">
       <p className="text-base-content/60 mb-2 uppercase tracking-widest text-sm">Room code</p>
-      <h1 className="text-6xl sm:text-8xl font-mono font-bold tracking-widest text-primary mb-4">{code}</h1>
+      <h1 className="text-6xl sm:text-8xl font-mono font-bold tracking-widest text-primary mb-6">{code}</h1>
+
+      <div className="bg-white p-4 rounded-2xl shadow mb-4">
+        <QRCode value={`${window.location.origin}/?code=${code}`} size={160} />
+      </div>
+
       <button
         onClick={copyJoinLink}
         className={`btn btn-sm gap-2 mb-10 transition-all ${copied ? 'btn-success' : 'btn-ghost'}`}
