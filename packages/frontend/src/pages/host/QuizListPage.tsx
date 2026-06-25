@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
 import type { QuizEntity } from '@quiz/shared';
-import { Plus, LogOut } from 'lucide-react';
+import { Plus, LogOut, Trash } from 'lucide-react';
 
 const TEMPLATE_CSV = [
   'question,type,time_limit,max_points,answer1,answer1_correct,answer2,answer2_correct,answer3,answer3_correct,answer4,answer4_correct',
@@ -177,7 +177,7 @@ export function QuizListPage() {
                       }}
                       className="btn btn-ghost btn-sm text-error"
                     >
-                      🗑
+                      <Trash size={15} />
                     </button>
                   </div>
                 </div>
