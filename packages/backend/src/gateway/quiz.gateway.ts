@@ -261,21 +261,35 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const state = this.sessions.get(sessionCode);
     if (!state || state.phase !== 'question_open') return;
 
-    if (state.answeredSocketIds.has(socket.id)) return;
-    state.answeredSocketIds.add(socket.id);
-
     const participantId = this.socketToParticipant.get(socket.id);
     if (!participantId) return;
-
-    const responseTimeMs = state.questionStartedAt
-      ? Date.now() - state.questionStartedAt
-      : 0;
 
     const question = await this.questionRepo.findOne({
       where: { id: data.questionId },
       relations: { answers: true },
     });
     if (!question) return;
+
+    const isReanswer = state.answeredSocketIds.has(socket.id);
+
+    const responseTimeMs = state.questionStartedAt
+      ? Date.now() - state.questionStartedAt
+      : 0;
+
+    const participant = await this.participantRepo.findOneBy({ id: participantId });
+    if (!participant) return;
+
+    if (isReanswer) {
+      const existingPa = await this.paRepo.findOne({
+        where: { participantId, questionId: data.questionId },
+      });
+      if (existingPa) {
+        participant.score -= existingPa.pointsEarned;
+        await this.paRepo.remove(existingPa);
+      }
+    } else {
+      state.answeredSocketIds.add(socket.id);
+    }
 
     const pointsEarned = this.scoring.calculate(
       question,
@@ -284,10 +298,6 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       responseTimeMs,
     );
 
-    const participant = await this.participantRepo.findOneBy({ id: participantId });
-    if (!participant) return;
-
-    const previousScore = participant.score;
     participant.score += pointsEarned;
     await this.participantRepo.save(participant);
 
@@ -315,24 +325,6 @@ export class QuizGateway implements OnGatewayConnection, OnGatewayDisconnect {
       answeredCount,
       totalPlayers: totalParticipants,
     });
-
-    // If all connected participants answered, close early
-    const room = this.server.sockets.adapter.rooms.get(sessionCode);
-    const participantSockets = room
-      ? [...room].filter((id) => id !== state.hostSocketId)
-      : [];
-
-    if (participantSockets.every((id) => state.answeredSocketIds.has(id))) {
-      if (state.tickInterval) {
-        clearInterval(state.tickInterval);
-        state.tickInterval = null;
-      }
-      const session = await this.sessionRepo.findOne({
-        where: { id: state.sessionId },
-        relations: { quiz: { questions: { answers: true } } },
-      });
-      if (session) await this.closeQuestion(session, state);
-    }
   }
 
   @SubscribeMessage(SOCKET_EVENTS.KICK_PARTICIPANT)
