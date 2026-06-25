@@ -116,7 +116,7 @@ export function SessionControlPage() {
       <div className="flex items-center justify-between mb-4 text-sm text-gray-400">
         <span>Question {question.questionIndex + 1} / {question.totalQuestions}</span>
         <span className="text-white font-semibold">
-          {answeredCount}{totalPlayers > 0 ? ` / ${totalPlayers}` : ''} answered
+          {answeredCount} of {totalPlayers > 0 ? totalPlayers : ''} answered
         </span>
         <span className="font-mono text-lg text-white">{Math.ceil(remainingMs / 1000)}s</span>
       </div>
